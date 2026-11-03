@@ -1,0 +1,158 @@
+/* Everything is local to this film; the existing galleries and timelines stay independent. */
+.meadow-film-section{position:relative;overflow:visible;padding:110px 0 85px;background:linear-gradient(180deg,#eaf2ed26,#edf4ee9c 45%,#edf4ed26);color:#2d4840;scroll-margin-top:100px}
+.meadow-film-heading{max-width:1020px;padding:0 26px;margin:0 auto 52px;text-align:center}
+.meadow-film-eyebrow{font:10px var(--mono,monospace);letter-spacing:.16em;color:#718b7c;margin:0 0 22px;line-height:1.7}
+.meadow-film-heading h2{font-size:clamp(38px,5.35vw,72px);font-weight:600;line-height:1.26;letter-spacing:-.065em;margin:0 0 26px;color:#29443d}
+.meadow-film-heading em,.meadow-film-copy em{font-style:normal;color:#708b77}
+.meadow-film-heading>p:last-child{font-size:15px;line-height:2;color:#6c8178;margin:0}
+.meadow-film-track{position:relative;isolation:isolate;scroll-margin-top:95px}
+.meadow-film-sticky{position:relative;isolation:isolate}
+.meadow-film-ambient{position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none;background:linear-gradient(155deg,#f1f7ec40,#e0eee66b 50%,#f6f2e95c)}
+.meadow-film-ambient i{position:absolute;width:65vw;height:65vw;left:-25vw;top:8%;border-radius:50%;background:radial-gradient(ellipse,#bcd9cb67,transparent 68%);transform:translate3d(calc(var(--meadow-film-progress,0)*14vw),0,0)}
+.meadow-film-ambient i:last-child{left:auto;right:-22vw;top:auto;bottom:-15%;background:radial-gradient(ellipse,#dfd8b55c,transparent 68%);transform:translate3d(calc(var(--meadow-film-progress,0)*-10vw),0,0)}
+.meadow-film-scenes{position:relative}
+.meadow-film-scene{position:relative;display:flex;flex-direction:column;align-items:center;min-width:0;padding:48px 24px 86px;scroll-margin-top:100px}
+.meadow-film-copy{width:min(100%,1000px);text-align:center;margin:0 0 27px}
+.meadow-film-kicker{font:10px var(--mono,monospace);letter-spacing:.19em;color:#809989;line-height:1.5;margin:0 0 13px}
+.meadow-film-copy h3{font-size:clamp(29px,3.7vw,49px);line-height:1.32;letter-spacing:-.05em;font-weight:550;margin:0 0 13px;color:#2d4d42}
+.meadow-film-copy>p:last-child{font-size:13px;line-height:1.85;color:#738a7b;margin:0}
+.meadow-film-stage{position:relative;display:flex;align-items:center;justify-content:center;width:min(1180px,100%);perspective:1800px}
+.meadow-film-media{min-width:0;width:100%;margin:0;padding:7px;border-radius:26px;border:1px solid #ffffffed;background:linear-gradient(130deg,#ffffffb3,#e7f3e964);box-shadow:inset 0 1px 2px #fff,0 24px 65px #3e665d20;transform-origin:50% 65%;isolation:isolate;flex-shrink:0}
+.meadow-film-zoom{display:block;position:relative;width:100%;padding:0;border:0;border-radius:19px;overflow:hidden;background:#dde7d8;cursor:zoom-in;isolation:isolate}
+.meadow-film-zoom img{display:block;width:100%;height:auto;object-fit:contain;filter:none;opacity:1;transform:none}
+.meadow-film-zoom>span{position:absolute;right:15px;bottom:14px;display:flex;gap:14px;align-items:center;padding:8px 13px;border:1px solid #ffffffdf;border-radius:22px;background:#f6fff1df;color:#355547;font:10px var(--sans,sans-serif);box-shadow:inset 0 1px 1px #fff,0 4px 18px #25453714;backdrop-filter:blur(15px) saturate(130%);-webkit-backdrop-filter:blur(15px) saturate(130%);pointer-events:none}
+.meadow-film-zoom>span b{font-size:14px;font-weight:400}
+.meadow-film-media figcaption{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:12px 10px 5px;font:10px var(--sans,sans-serif);line-height:1.5;color:#617d6b}
+.meadow-film-media figcaption>span:last-child{font-size:9px;color:#859a89}
+.meadow-film-note{max-width:850px;margin:23px 0 0;text-align:center;font-size:12px;line-height:1.85;color:#52725e}
+.meadow-film-note>span{margin-left:10px;color:#829782}
+.meadow-film-stage--portrait{display:grid;grid-template-columns:minmax(220px,330px) minmax(0,480px);gap:70px;width:min(100%,930px)}
+.meadow-film-lesson{margin:0;text-align:left;padding:30px;border:1px solid #ffffffdf;border-radius:26px;background:linear-gradient(135deg,#ffffff80,#f2f9ec5e);box-shadow:inset 0 1px 2px #fff,0 15px 45px #536f4610;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.meadow-film-lesson .meadow-film-lesson-title{font-size:24px;line-height:1.55;font-weight:500;letter-spacing:-.04em;color:#47664f;margin:0 0 25px}
+.meadow-film-lesson ol{counter-reset:meadow-step;list-style:none;display:grid;gap:17px;padding:0;margin:0 0 25px}
+.meadow-film-lesson li{counter-increment:meadow-step;font-size:13px;color:#56735c}
+.meadow-film-lesson li:before{content:'0' counter(meadow-step);font:9px var(--mono,monospace);margin-right:17px;color:#91a48c}
+.meadow-film-lesson>p:last-child{font-size:10px;line-height:1.9;color:#859681;margin:0}
+.meadow-film-scene--conversation .meadow-film-media{max-width:1040px}
+.meadow-film-note--disclosure{font-size:10px}
+.meadow-film-media .meadow-film-example{padding:3px 8px;border:1px solid #e2e8d6;border-radius:12px;background:#f2f6ea;color:#6d8068}
+.meadow-film-section a:focus-visible,.meadow-film-section button:focus-visible{outline:3px solid #709c7c;outline-offset:5px}
+.meadow-film-outro{display:flex;align-items:center;justify-content:space-between;gap:32px;flex-wrap:wrap;max-width:1180px;margin:30px auto 0;padding:38px;border:1px solid #ffffffdb;border-radius:28px;background:linear-gradient(125deg,#ffffff85,#e8f4e75e);box-shadow:inset 0 1px 2px #fff,0 15px 40px #4c6e4410}
+.meadow-film-outro .meadow-film-eyebrow{font-size:8px;margin-bottom:12px}
+.meadow-film-outro h3{font-size:25px;line-height:1.4;font-weight:550;letter-spacing:-.045em;margin:0;color:#41634e}
+.meadow-film-topics{display:flex;gap:20px;flex-wrap:wrap;padding:0;margin:0;list-style:none}
+.meadow-film-topics li{font-size:11px;color:#52705a;line-height:1.6}
+.meadow-film-topics span{display:block;font-size:9px;color:#92a18c;margin-top:6px}
+.meadow-film-enter{display:inline-flex;align-items:center;justify-content:center;gap:22px;min-height:44px;padding:12px 20px;border:1px solid #436c50;border-radius:27px;background:#496e52;color:#fff9ec;text-decoration:none;font-size:12px;white-space:nowrap;box-shadow:inset 0 1px 1px #c5dfc64d,0 8px 20px #3b5f4320}
+.meadow-film-disclosure,.meadow-film-device-note{max-width:950px;padding:0 25px;margin:20px auto 0;text-align:center;font-size:10px;line-height:1.9;color:#8a9b87}
+.meadow-film-device-note{margin-top:9px;font-size:9px}
+@media(max-width:1250px){
+.meadow-film-outro{margin-inline:28px}
+}
+@media(max-width:760px){
+.meadow-film-section{padding:80px 0 65px}
+.meadow-film-heading{padding-inline:23px;margin-bottom:35px}
+.meadow-film-heading h2{font-size:clamp(34px,6.8vw,48px)}
+.meadow-film-eyebrow{font-size:8px;letter-spacing:.12em;margin-bottom:20px}
+.meadow-film-heading>p:last-child{font-size:13px}
+.meadow-film-heading>p:last-child br{display:none}
+.meadow-film-scene{padding:35px 17px 65px}
+.meadow-film-copy{margin-bottom:22px}
+.meadow-film-copy h3{font-size:29px}
+.meadow-film-copy em{display:block}
+.meadow-film-copy>p:last-child{font-size:12px;max-width:360px;margin-inline:auto}
+.meadow-film-kicker{font-size:9px}
+.meadow-film-media{border-radius:19px;padding:5px}
+.meadow-film-zoom{border-radius:14px}
+.meadow-film-zoom>span{font-size:9px;padding:6px 10px;gap:9px;right:10px;bottom:10px}
+.meadow-film-media figcaption{padding:10px 7px 4px;font-size:9px;gap:10px}
+.meadow-film-media figcaption>span:last-child{font-size:8px}
+.meadow-film-note{font-size:11px;margin-top:19px;max-width:360px}
+.meadow-film-note>span{display:block;margin-left:0}
+.meadow-film-stage--portrait{grid-template-columns:1fr;gap:24px;max-width:470px}
+.meadow-film-lesson{max-width:none;padding:24px}
+.meadow-film-lesson .meadow-film-lesson-title{font-size:21px}
+.meadow-film-lesson ol{gap:13px}
+.meadow-film-lesson li{font-size:12px}
+.meadow-film-note--disclosure{font-size:10px}
+.meadow-film-outro{margin:20px 18px 0;padding:28px 24px;gap:25px;border-radius:23px}
+.meadow-film-topics{gap:20px 24px}
+.meadow-film-outro h3{font-size:24px}
+.meadow-film-enter{min-height:43px;font-size:11px}
+.meadow-film-disclosure{font-size:9px;line-height:2}
+.meadow-film-device-note{font-size:8px;line-height:2}
+}
+@media(max-width:420px){
+.meadow-film-copy h3{font-size:27px}
+}
+@media(prefers-reduced-motion:reduce),(max-height:659px){
+.meadow-film-ambient i{transform:none}
+}
+@media(prefers-reduced-transparency:reduce),(prefers-contrast:more){
+.meadow-film-lesson,.meadow-film-outro,.meadow-film-zoom>span{background:#f5f9ee;backdrop-filter:none;-webkit-backdrop-filter:none;border-color:#b6c9b0}
+.meadow-film-copy>p:last-child,.meadow-film-note,.meadow-film-note>span,.meadow-film-disclosure,.meadow-film-device-note{color:#4e6651}
+}
+@media print{
+.meadow-film-section{padding:25px 0;background:white}
+.meadow-film-track .meadow-film-media,.meadow-film-track .meadow-film-copy,.meadow-film-track .meadow-film-note{opacity:1!important;transform:none!important;will-change:auto}
+.meadow-film-zoom>span,.meadow-film-enter,.meadow-film-ambient{display:none!important}
+.meadow-film-media{break-inside:avoid}
+}
+.meadow-film-note a{display:inline-block;margin-left:12px;color:#517b7c;text-decoration:underline;text-underline-offset:4px}
+.era-intro-entry{text-align:center;margin:48px auto 20px;padding:60px 24px;max-width:1100px}
+.era-intro-entry>span{font:9px var(--mono);letter-spacing:2px;color:#87a194}
+.era-intro-entry h3{font-size:clamp(30px,4vw,52px);line-height:1.3;letter-spacing:-2px;font-weight:500;margin:22px 0}
+.era-intro-entry p{font-size:14px;color:#7a8e83;line-height:1.9}
+.era-intro-entry>small{display:block;margin-top:20px;font-size:10px;color:#8da096}
+@media(max-width:760px){
+.meadow-film-copy>p:last-child{max-width:350px;margin:auto}
+}
+
+/* Seven chapters have their own footer row. Scene text never shares its space. */
+.meadow-film-controls{position:relative;display:grid;grid-template-columns:auto auto;justify-content:center;align-items:center;column-gap:18px;row-gap:6px;width:100%;min-width:0;padding:8px 20px 16px;margin:0 auto 12px;z-index:5}
+.meadow-film-chapters{grid-column:1/-1;justify-self:center;position:relative;isolation:isolate;display:flex;gap:4px;max-width:100%;padding:5px;border:1px solid #ffffffef;border-radius:36px;background:linear-gradient(135deg,#ffffffb0,#edf8ec85);box-shadow:inset 0 1px 2px #fff,inset 0 -2px 5px #c5dbca32,0 9px 26px #426e571a;backdrop-filter:blur(24px) saturate(150%);-webkit-backdrop-filter:blur(24px) saturate(150%);overflow-x:auto;overflow-y:hidden;scrollbar-width:none;overscroll-behavior-x:contain}
+.meadow-film-chapters::-webkit-scrollbar{display:none}
+.meadow-film-chapters a{position:relative;z-index:1;display:flex;flex-shrink:0;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:8px 14px;border-radius:28px;color:#617e69;font-size:12px;line-height:18px;text-decoration:none;white-space:nowrap;transition:color .3s,background .3s}
+.meadow-film-chapters a>span{font:9px var(--mono,monospace);opacity:.75}
+.meadow-film-chapters a[aria-current=step]{color:#30583d;background:#ffffffb3}
+.meadow-film-chapters a:hover{color:#315f42;background:#ffffff72}
+.meadow-film-lens{position:absolute;inset:5px auto 5px 5px;z-index:0;display:none;width:var(--meadow-film-lens-width,86px);transform:translateX(var(--meadow-film-lens-x,0px));border:1px solid #fff;border-radius:30px;background:linear-gradient(120deg,#ffffffe0,#ffffff55);box-shadow:inset 0 1px 2px #fff,inset 0 -2px 5px #bad3c846,0 5px 12px #4b6f4a14;transition:transform .5s cubic-bezier(.2,.8,.2,1),width .5s cubic-bezier(.2,.8,.2,1);pointer-events:none}
+.meadow-film-tools{grid-column:1;justify-self:end;display:flex;align-items:center;gap:13px;min-width:0}
+.meadow-film-counter{font:10px var(--mono,monospace);color:#758e77;white-space:nowrap}
+.meadow-film-reading{min-height:28px;padding:5px 0;background:none;border:0;color:#58785f;font:12px/18px var(--sans,sans-serif);text-decoration:underline;text-underline-offset:4px;white-space:nowrap;cursor:pointer}
+.meadow-film-reading[hidden]{display:none}
+.meadow-film-hint{grid-column:2;justify-self:start;display:block;margin:0;color:#7b947b;font-size:11px;line-height:18px;white-space:nowrap}
+.meadow-film-hint>span{margin-right:6px}
+.meadow-film-track.is-cinematic{height:var(--meadow-film-height,520svh)}
+.meadow-film-track.is-cinematic .meadow-film-sticky{position:sticky;top:0;display:grid;grid-template-rows:minmax(0,1fr) auto;row-gap:12px;height:100svh;min-height:660px;padding:96px 0 max(8px,env(safe-area-inset-bottom));overflow:clip}
+.meadow-film-track.is-cinematic .meadow-film-controls{grid-row:2;position:relative;inset:auto;margin:0;padding:0 20px 6px}
+.meadow-film-track.is-cinematic .meadow-film-scenes{grid-row:1;position:relative;height:auto;min-height:0;min-width:0}
+.meadow-film-track.is-cinematic .meadow-film-scene{position:absolute;inset:0;display:grid;grid-template-rows:auto minmax(0,1fr) auto;justify-items:center;align-content:stretch;row-gap:14px;min-height:0;padding:0 24px 18px;visibility:hidden;pointer-events:none}
+.meadow-film-track.is-cinematic .meadow-film-scene--question{grid-template-rows:auto minmax(0,1fr)}
+.meadow-film-track.is-cinematic .meadow-film-scene.meadow-film-active{visibility:visible;pointer-events:auto}
+.meadow-film-track.is-cinematic .meadow-film-copy{grid-row:1;align-self:start;margin:0;will-change:transform,opacity}
+.meadow-film-track.is-cinematic .meadow-film-copy h3{font-size:clamp(27px,3.15vw,42px);line-height:1.3;margin-bottom:8px}
+.meadow-film-track.is-cinematic .meadow-film-kicker{font-size:10px;line-height:15px;margin-bottom:8px}
+.meadow-film-track.is-cinematic .meadow-film-copy>p:last-child{font-size:12px;line-height:1.7}
+.meadow-film-track.is-cinematic .meadow-film-stage{grid-row:2;align-self:stretch;min-height:0;min-width:0;max-width:1180px;width:100%;overflow:visible}
+.meadow-film-track.is-cinematic .meadow-film-media{width:min(100%,1120px);max-width:none;justify-self:center;align-self:center;will-change:transform,opacity}
+.meadow-film-track.is-cinematic .meadow-film-scene>.meadow-film-note{grid-row:3;align-self:end;width:min(100%,850px);margin:0;min-width:0;font-size:12px;line-height:1.75;will-change:transform,opacity}
+.meadow-film-track.is-cinematic .meadow-film-stage--portrait{display:grid;grid-template-columns:minmax(210px,285px) minmax(0,1fr);column-gap:42px;row-gap:0;align-items:center;max-width:930px}
+.meadow-film-track.is-cinematic .meadow-film-lesson{align-self:center;margin:0;padding:26px;max-width:285px;font-size:12px;will-change:transform,opacity}
+.meadow-film-track.is-cinematic .meadow-film-lesson .meadow-film-lesson-title{font-size:22px;margin-bottom:22px}
+.meadow-film-track.is-cinematic .meadow-film-note--disclosure{font-size:11px}
+.meadow-film-track.is-cinematic .meadow-film-lens{display:block}
+.meadow-film-track.is-cinematic .meadow-film-chapters a[aria-current=step]{background:transparent}
+@media(min-width:1100px){
+  .meadow-film-controls{grid-template-columns:auto auto auto;column-gap:20px;row-gap:0}.meadow-film-chapters{grid-column:1}.meadow-film-tools{grid-column:2}.meadow-film-hint{grid-column:3}
+}
+@media(max-width:760px){
+  .meadow-film-controls{column-gap:13px;padding-inline:14px}.meadow-film-chapters{gap:2px;padding:5px;max-width:100%}.meadow-film-chapters a{min-height:40px;padding:8px 10px;font-size:12px}.meadow-film-chapters a>span{display:none}.meadow-film-tools{gap:11px}.meadow-film-counter{font-size:10px}.meadow-film-reading{font-size:12px}.meadow-film-hint{font-size:10px;line-height:18px}
+  .meadow-film-track.is-cinematic .meadow-film-sticky{padding-top:84px}.meadow-film-track.is-cinematic .meadow-film-controls{padding-inline:14px}.meadow-film-track.is-cinematic .meadow-film-scene{row-gap:12px;padding:0 15px 18px}.meadow-film-track.is-cinematic .meadow-film-copy h3{font-size:clamp(25px,5.4vw,34px);line-height:1.35}.meadow-film-track.is-cinematic .meadow-film-copy>p:last-child{font-size:12px;line-height:1.7;max-width:360px}.meadow-film-track.is-cinematic .meadow-film-scene--question .meadow-film-copy em{display:inline}.meadow-film-track.is-cinematic .meadow-film-scene>.meadow-film-note{font-size:12px;line-height:1.7;max-width:360px}.meadow-film-track.is-cinematic .meadow-film-note--disclosure{font-size:11px}.meadow-film-track.is-cinematic .meadow-film-note a{display:block;width:max-content;max-width:100%;margin:5px auto 0;white-space:nowrap}.meadow-film-track.is-cinematic .meadow-film-stage--portrait{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);row-gap:14px;max-width:470px}.meadow-film-track.is-cinematic .meadow-film-lesson{grid-row:1;width:100%;max-width:none;padding:0;border:0;background:none;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;text-align:center}.meadow-film-track.is-cinematic .meadow-film-stage--portrait .meadow-film-media{grid-row:2}.meadow-film-track.is-cinematic .meadow-film-lesson .meadow-film-lesson-title{font-size:14px;line-height:1.5;margin:0 0 6px}.meadow-film-track.is-cinematic .meadow-film-lesson .meadow-film-lesson-title br{display:none}.meadow-film-track.is-cinematic .meadow-film-lesson ol{display:flex;flex-wrap:wrap;justify-content:center;gap:5px 10px;margin:0}.meadow-film-track.is-cinematic .meadow-film-lesson li{font-size:11px;line-height:1.6}.meadow-film-track.is-cinematic .meadow-film-lesson li:before{font-size:9px;margin-right:5px}.meadow-film-track.is-cinematic .meadow-film-lesson>p:last-child{font-size:11px;line-height:1.6;margin:6px 0 0}.meadow-film-track.is-cinematic .meadow-film-lesson>p:last-child br{display:none}.meadow-film-track.is-cinematic .meadow-film-media figcaption{font-size:10px;line-height:1.5}.meadow-film-track.is-cinematic .meadow-film-media figcaption>span:last-child{font-size:9px}.meadow-film-zoom>span{font-size:10px}
+}
+@media(max-width:350px){.meadow-film-controls{column-gap:9px}.meadow-film-hint{font-size:9px}.meadow-film-reading{font-size:11px}.meadow-film-counter{font-size:9px}}
+@media(prefers-reduced-motion:reduce),(max-height:659px){
+  .meadow-film-track.is-cinematic{height:auto}.meadow-film-track.is-cinematic .meadow-film-sticky{position:relative;display:block;height:auto;min-height:0;padding:0;overflow:visible}.meadow-film-track.is-cinematic .meadow-film-scenes{height:auto}.meadow-film-track.is-cinematic .meadow-film-scene{position:relative;display:flex;padding:35px 20px 65px;visibility:visible!important;pointer-events:auto!important}.meadow-film-track.is-cinematic .meadow-film-media,.meadow-film-track.is-cinematic .meadow-film-copy,.meadow-film-track.is-cinematic .meadow-film-note{opacity:1!important;transform:none!important;will-change:auto}.meadow-film-track.is-cinematic .meadow-film-media{width:100%!important;max-width:1040px}.meadow-film-track.is-cinematic .meadow-film-stage--portrait .meadow-film-media{max-width:425px}.meadow-film-track.is-cinematic .meadow-film-controls{position:relative;padding:8px 20px 16px}.meadow-film-chapters a,.meadow-film-lens{transition:none}
+}
+@media(prefers-reduced-transparency:reduce),(prefers-contrast:more){.meadow-film-chapters{background:#f5f9ee;backdrop-filter:none;-webkit-backdrop-filter:none;border-color:#b6c9b0}.meadow-film-lens{background:#e4eddc}.meadow-film-chapters a,.meadow-film-hint,.meadow-film-reading,.meadow-film-counter{color:#4e6651}}
+@media print{.meadow-film-controls{display:none!important}.meadow-film-track.is-cinematic{height:auto}.meadow-film-track.is-cinematic .meadow-film-sticky{position:relative;display:block;height:auto;min-height:0;padding:0;overflow:visible}.meadow-film-track.is-cinematic .meadow-film-scene{position:relative;display:flex;padding:25px 0;visibility:visible!important;pointer-events:auto}.meadow-film-track.is-cinematic .meadow-film-media{width:100%!important;max-width:800px}.meadow-film-track.is-cinematic .meadow-film-stage--portrait .meadow-film-media{max-width:330px}}

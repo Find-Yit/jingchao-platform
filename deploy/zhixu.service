@@ -1,0 +1,27 @@
+[Unit]
+Description=Jingchao School AI Teaching Workspace
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=zhixu
+Group=zhixu
+WorkingDirectory=/opt/zhixu/app
+Environment=DATA_DIR=/var/lib/zhixu
+Environment=BEHIND_PROXY=1
+EnvironmentFile=-/etc/zhixu.env
+ExecStartPre=/opt/zhixu/venv/bin/python -c "import app"
+ExecStart=/opt/zhixu/venv/bin/gunicorn --workers 2 --threads 4 --bind 127.0.0.1:8088 --timeout 100 --access-logfile - --error-logfile - app:app
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/zhixu
+
+[Install]
+WantedBy=multi-user.target

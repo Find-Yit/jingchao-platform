@@ -1,0 +1,10 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {calculate,shiftFormula,range,modelAt,apply,displayCell} from '../static/office-model.mjs';
+const lessons=JSON.parse(readFileSync(new URL('../office_lessons.json',import.meta.url)));
+test('relative and absolute references shift correctly without executing code',()=>{assert.equal(shiftFormula('=$B2/C$2',3),'=$B5/C$2');assert.equal(shiftFormula('=SUM(B2:B5)',1,1),'=SUM(C3:C6)');assert.throws(()=>shiftFormula('=L30',1));assert.deepEqual(range('D2:D5'),['D2','D3','D4','D5']);assert.throws(()=>range('D5:D2'));});
+test('real dependency recalculation and percent formatting',()=>{const m=modelAt(lessons.find(l=>l.kind==='excel'),6);assert.equal(calculate(m.cells,'B6'),104);assert.equal(calculate(m.cells,'D4'),1);assert.equal(displayCell(m,'D4'),'100%');const changed=apply(m,{action:'cell',target:'B4',value:'20'});assert.equal(calculate(changed.cells,'B6'),84);assert.equal(displayCell(changed,'D4'),'50%');assert.equal(m.cells.B4,'40');});
+test('reject cycles, invalid ranges, unsupported functions and division by zero',()=>{for(const raw of ['=A1','=1/0','=fetch(1)','=SUM(A1:L30)','=2**4','=SUM(A2:A3'])assert.throws(()=>calculate({A1:raw,A2:'2',A3:'3'},'A1'),raw);});
+test('aggregates ignore text and work with arithmetic/absolute addresses',()=>{const cells={A1:'18',A2:'25',A3:'32',A4:'21',B1:'=AVERAGE(A1:A4)',B2:'=($A$1+2)*3/4',B3:'标题',B4:'=SUM(B1:B3)'};assert.equal(calculate(cells,'B1'),24);assert.equal(calculate(cells,'B2'),15);assert.equal(calculate(cells,'B4'),39);});
+test('demonstrations use separate immutable models and real object geometry',()=>{for(const l of lessons){const initial=JSON.stringify(l.initial);const end=modelAt(l,l.steps.length);assert.equal(JSON.stringify(l.initial),initial);assert.notDeepEqual(end,l.initial);if(l.kind==='ppt'){assert.equal(end.objects[0].x,end.objects[1].x);assert.equal(end.objects[0].width,780);assert.equal(end.objects[1].shadow,true);}if(l.kind==='word'){assert.equal(end.picture.side,'left');assert.equal(end.picture.wrap,'square');assert.equal(end.lineSpacing,1.5);}}});

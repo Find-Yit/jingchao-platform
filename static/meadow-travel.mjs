@@ -1,0 +1,4 @@
+import {terrainHeight,LAKE,BOUND,distance,clamp} from './meadow-math.mjs?v=6.0';
+import {solidAt} from './meadow-motion.mjs?v=6.0';
+/** Search on the actual terrain and physical colliders, not a decorative map. */
+export function landingSpot(point,obstacles=[]){if(!point||!Number.isFinite(point.x)||!Number.isFinite(point.z))return null;const center={x:clamp(point.x,-BOUND+5,BOUND-5),z:clamp(point.z,-BOUND+5,BOUND-5)};for(let ring=0;ring<=20;ring++){const count=ring?Math.max(12,ring*6):1;for(let i=0;i<count;i++){const a=i/count*Math.PI*2,x=center.x+Math.cos(a)*ring*1.3,z=center.z+Math.sin(a)*ring*1.3,y=terrainHeight(x,z);if(distance({x,z},LAKE)<21.5||solidAt(x,z,y,obstacles,.7))continue;const slope=Math.max(Math.abs(terrainHeight(x+.7,z)-y),Math.abs(terrainHeight(x-.7,z)-y),Math.abs(terrainHeight(x,z+.7)-y),Math.abs(terrainHeight(x,z-.7)-y));if(slope<.45)return{x,z,y};}}return null;}

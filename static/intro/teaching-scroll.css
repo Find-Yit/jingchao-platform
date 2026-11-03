@@ -1,0 +1,116 @@
+/* Teacher workflow: native scroll, full interface screenshots, glass chapter controls. */
+#workflow{overflow:visible}
+#teaching-scroll{position:relative;isolation:isolate;scroll-margin-top:100px;--teaching-accent:#4a7895}
+#teaching-scroll .teaching-sticky{position:relative}
+#teaching-scroll .teaching-sticky:before{content:"";position:absolute;inset:5% -8%;z-index:-1;pointer-events:none;background:radial-gradient(ellipse at 75% 38%,#a5d5e736,transparent 62%),radial-gradient(ellipse at 18% 75%,#c4d9ca36,transparent 55%)}
+#teaching-scroll .teaching-scenes{position:relative;width:min(1440px,calc(100% - 80px));margin-inline:auto}
+#teaching-scroll .teaching-scene{position:relative;display:grid;grid-template-columns:minmax(0,.31fr) minmax(0,1fr);align-items:center;gap:clamp(25px,3vw,48px);padding:64px 0 88px;min-width:0;scroll-margin-top:110px}
+#teaching-scroll .teaching-copy{position:relative;min-width:0;z-index:2}
+#teaching-scroll .teaching-kicker{font:10px/1.7 var(--mono);letter-spacing:.14em;color:#6a8799;margin-bottom:20px;text-transform:uppercase}
+#teaching-scroll .teaching-kicker span{color:#3c6f8a}
+#teaching-scroll .teaching-copy h3{font-size:clamp(25px,2.7vw,39px);line-height:1.38;letter-spacing:-.045em;font-weight:550;color:#2d4c60;margin:0 0 21px;text-wrap:balance}
+#teaching-scroll .teaching-copy h3 em{font-style:normal;color:#4c7c8d}
+#teaching-scroll .teaching-description{font-size:13px;line-height:1.95;color:#6a8190;margin:0 0 22px;text-wrap:pretty}
+#teaching-scroll .teaching-tags{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:26px}
+#teaching-scroll .teaching-tags span{display:inline-flex;padding:5px 10px;border:1px solid #ffffffdc;border-radius:20px;font-size:10px;line-height:1.5;color:#567587;background:linear-gradient(135deg,#ffffff75,#eff8fc35);box-shadow:inset 0 1px 1px #fff9}
+#teaching-scroll .teaching-link{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:#3f708c;border-bottom:1px solid #7295aa50;padding-bottom:5px;text-underline-offset:5px}
+#teaching-scroll .teaching-media{position:relative;min-width:0;width:100%;padding:6px;border:1px solid #fff;border-radius:22px;background:linear-gradient(135deg,#ffffffc9,#f4fbff45 52%,#d9edf34a);box-shadow:inset 0 1px 2px #fff,0 22px 65px #365b7a24,0 3px 10px #486e8910;transform-origin:50% 60%}
+#teaching-scroll .teaching-windowbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px 12px;color:#758d9e;font-size:9px;line-height:1.5;min-height:31px;letter-spacing:.025em}
+#teaching-scroll .teaching-windowbar>span:first-child{color:#567588}
+#teaching-scroll .teaching-windowbar .window-dots{display:flex;gap:4px}
+#teaching-scroll .teaching-media .screen-zoom{display:block;width:100%;padding:0;border:0;border-radius:15px;background:#eaf2f6;overflow:hidden;position:relative}
+#teaching-scroll .teaching-media .screen-zoom>img{display:block;width:100%;height:auto;object-fit:contain;border-radius:15px}
+#teaching-scroll .teaching-media .screen-zoom>span{position:absolute;right:14px;bottom:13px;border:1px solid #ffffffd9;border-radius:20px;padding:7px 12px;background:#eff9ffbd;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 4px 13px #36566c14;font-size:10px;color:#426882;opacity:0;transform:translateY(4px);transition:opacity .22s,transform .22s}
+#teaching-scroll .teaching-media .screen-zoom:hover>span,#teaching-scroll .teaching-media .screen-zoom:focus-visible>span{opacity:1;transform:none}
+#teaching-scroll .teaching-image-caption{padding:10px 13px 5px;font-size:9px;line-height:1.6;color:#78909e;text-align:left}
+#teaching-scroll .teaching-footer{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:15px 22px;padding:16px 0 28px;width:min(1280px,calc(100% - 64px));margin-inline:auto}
+#teaching-scroll .teaching-chapters{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;padding:6px;border:1px solid #ffffffeb;border-radius:30px;background:linear-gradient(120deg,#ffffffa6,#eaf5ff55);box-shadow:inset 0 1px 2px #fff,0 10px 30px #42637a18;backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%)}
+#teaching-scroll .teaching-chapters button{position:relative;display:flex;align-items:center;justify-content:center;gap:7px;font:11px/1.5 var(--sans);color:#708a9a;border:1px solid transparent;border-radius:23px;background:transparent;padding:9px 13px;white-space:nowrap;transition:background .28s,color .28s,box-shadow .28s}
+#teaching-scroll .teaching-chapters button>span{font:9px var(--mono);opacity:.65}
+#teaching-scroll .teaching-chapters button:hover{background:#ffffff66;color:#345f79}
+#teaching-scroll .teaching-chapters button[aria-pressed=true]{color:#315f7a;background:linear-gradient(125deg,#ffffffeb,#ffffff65);border-color:#fff;box-shadow:inset 0 1px 2px #fff,0 3px 11px #446a831b}
+#teaching-scroll .teaching-counter{font:10px var(--mono);letter-spacing:.06em;color:#6a879a;white-space:nowrap}
+#teaching-scroll .teaching-scroll-hint{font-size:10px;line-height:1.6;color:#8298a7;margin:0}
+#teaching-scroll .teaching-reading-toggle,#teaching-scroll .teaching-skip{font:10px/1.5 var(--sans);color:#6e899b;border:0;background:none;padding:6px 0;text-decoration:underline;text-underline-offset:5px;white-space:nowrap}
+#teaching-scroll .teaching-reading-toggle[hidden]{display:none}
+#teaching-scroll button:focus-visible,#teaching-scroll a:focus-visible{outline:2px solid #4c83a4;outline-offset:5px}
+#teaching-scroll.is-cinematic{height:var(--teaching-travel,840svh)}
+#teaching-scroll.is-cinematic .teaching-sticky{position:sticky;top:0;height:100svh;min-height:600px;overflow:clip}
+#teaching-scroll.is-cinematic .teaching-scenes{height:100%;perspective:1800px}
+#teaching-scroll.is-cinematic .teaching-scene{position:absolute;inset:0;padding:105px 16px 130px;visibility:hidden;pointer-events:none}
+#teaching-scroll.is-cinematic .teaching-scene.is-active{visibility:visible;pointer-events:auto}
+#teaching-scroll.is-cinematic .teaching-copy{will-change:transform,opacity}
+#teaching-scroll.is-cinematic .teaching-media{width:min(100%,calc((100svh - 245px)*1.6));justify-self:center;will-change:transform,opacity}
+#teaching-scroll.is-cinematic .teaching-media .screen-zoom>img{max-height:calc(100svh - 245px);object-fit:contain}
+#teaching-scroll.is-cinematic .teaching-footer{position:absolute;bottom:19px;left:0;right:0;z-index:5;padding:0;column-gap:17px;row-gap:10px}
+#teaching-scroll.is-cinematic .teaching-scroll-hint{flex-basis:100%;text-align:center;order:5}
+#teaching-scroll:not(.is-cinematic) .teaching-scroll-hint{display:none}
+#teaching-scroll:not(.is-cinematic) .teaching-scene+.teaching-scene{border-top:1px solid #7193aa1c}
+@media(max-width:1050px){
+  #teaching-scroll .teaching-scene{grid-template-columns:minmax(0,.34fr) minmax(0,1fr);gap:25px}
+  #teaching-scroll .teaching-copy h3{font-size:29px}
+  #teaching-scroll .teaching-description{font-size:12px;line-height:1.85}
+  #teaching-scroll .teaching-tags{margin-bottom:18px}
+  #teaching-scroll .teaching-chapters button{padding:9px 10px;gap:5px}
+}
+@media(max-width:1000px){
+  #teaching-scroll .teaching-scenes{width:calc(100% - 48px)}
+  #teaching-scroll .teaching-scene{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:25px;padding:45px 0 70px}
+  #teaching-scroll .teaching-copy{width:min(100%,560px);text-align:center}
+  #teaching-scroll .teaching-kicker{margin-bottom:10px;font-size:9px}
+  #teaching-scroll .teaching-copy h3{font-size:clamp(24px,4vw,31px);line-height:1.32;margin-bottom:12px}
+  #teaching-scroll .teaching-description{font-size:12px;line-height:1.8;margin-bottom:13px}
+  #teaching-scroll .teaching-tags{justify-content:center;margin-bottom:13px;gap:6px}
+  #teaching-scroll .teaching-tags span{font-size:9px;padding:4px 9px}
+  #teaching-scroll .teaching-link{font-size:11px}
+  #teaching-scroll .teaching-windowbar{font-size:8px;padding:6px 8px 8px;min-height:25px}
+  #teaching-scroll .teaching-image-caption{font-size:8px;padding:8px 8px 3px}
+  #teaching-scroll .teaching-media{padding:4px;border-radius:16px}
+  #teaching-scroll .teaching-media .screen-zoom,#teaching-scroll .teaching-media .screen-zoom>img{border-radius:10px}
+  #teaching-scroll.is-cinematic .teaching-scene{padding:100px 10px 130px;gap:20px}
+  #teaching-scroll.is-cinematic .teaching-media{width:min(100%,calc((100svh - 425px)*1.6))}
+  #teaching-scroll.is-cinematic .teaching-media .screen-zoom>img{max-height:calc(100svh - 425px)}
+  #teaching-scroll .teaching-chapters{gap:2px;padding:5px}
+  #teaching-scroll .teaching-chapters button{font-size:10px;padding:8px 9px;gap:4px}
+  #teaching-scroll .teaching-counter{font-size:9px}
+  #teaching-scroll.is-cinematic .teaching-footer{gap:8px 14px;bottom:18px}
+  #teaching-scroll.is-cinematic .teaching-scroll-hint{font-size:9px}
+}
+@media(max-width:560px){
+  #teaching-scroll .teaching-scenes,#teaching-scroll .teaching-footer{width:calc(100% - 36px)}
+  #teaching-scroll.is-cinematic{height:var(--teaching-mobile-travel,770svh)}
+  #teaching-scroll .teaching-chapters{grid-template-columns:repeat(4,minmax(0,1fr));width:min(100%,350px);border-radius:20px;gap:2px 3px}
+  #teaching-scroll .teaching-chapters button{padding:7px 9px;font-size:10px;min-height:29px}
+  #teaching-scroll .teaching-chapters button:last-child{grid-column:3 / 5}
+  #teaching-scroll .teaching-footer{column-gap:13px;row-gap:10px}
+  #teaching-scroll .teaching-chapters{flex-basis:100%}
+  #teaching-scroll .teaching-reading-toggle,#teaching-scroll .teaching-skip{font-size:9px}
+  #teaching-scroll.is-cinematic .teaching-scene{padding:103px 1px 162px;gap:18px}
+  #teaching-scroll.is-cinematic .teaching-media{width:min(100%,calc((100svh - 460px)*1.6))}
+  #teaching-scroll.is-cinematic .teaching-media .screen-zoom>img{max-height:calc(100svh - 460px)}
+  #teaching-scroll.is-cinematic .teaching-footer{bottom:18px;row-gap:7px;column-gap:14px}
+  #teaching-scroll.is-cinematic .teaching-scroll-hint{display:none}
+  #teaching-scroll .teaching-media .screen-zoom>span{opacity:1;transform:none;font-size:8px;padding:5px 8px;right:7px;bottom:7px}
+  #teaching-scroll .teaching-windowbar>span:last-child{font-size:7px}
+}
+@media(prefers-reduced-motion:reduce),(max-height:599px){
+  #teaching-scroll.is-cinematic{height:auto}
+  #teaching-scroll.is-cinematic .teaching-sticky{position:relative;height:auto;min-height:0;overflow:visible}
+  #teaching-scroll.is-cinematic .teaching-scenes{height:auto}
+  #teaching-scroll.is-cinematic .teaching-scene{position:relative;padding:45px 0 65px;visibility:visible!important;pointer-events:auto}
+  #teaching-scroll.is-cinematic .teaching-media{width:100%}
+  #teaching-scroll.is-cinematic .teaching-media .screen-zoom>img{max-height:none}
+  #teaching-scroll.is-cinematic .teaching-copy,#teaching-scroll.is-cinematic .teaching-media{opacity:1!important;transform:none!important;will-change:auto}
+  #teaching-scroll.is-cinematic .teaching-footer{position:relative;bottom:auto}
+  #teaching-scroll .teaching-chapters button,#teaching-scroll .screen-zoom>span{transition:none}
+}
+@media print{
+  #teaching-scroll.is-cinematic{height:auto}
+  #teaching-scroll.is-cinematic .teaching-sticky{position:relative;height:auto;min-height:0;overflow:visible}
+  #teaching-scroll.is-cinematic .teaching-scenes{height:auto}
+  #teaching-scroll.is-cinematic .teaching-scene{position:relative;visibility:visible!important;page-break-inside:avoid;padding:30px 0}
+  #teaching-scroll .teaching-copy,#teaching-scroll .teaching-media{opacity:1!important;transform:none!important;will-change:auto!important}
+  #teaching-scroll.is-cinematic .teaching-media{width:100%}
+  #teaching-scroll.is-cinematic .teaching-media .screen-zoom>img{max-height:none}
+  #teaching-scroll .teaching-footer,#teaching-scroll .teaching-media .screen-zoom>span{display:none}
+}

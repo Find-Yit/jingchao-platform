@@ -1,0 +1,9 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {blankModel,applyStep,modelAt}from'../static/office-engine.mjs';
+import {searchGrid}from'../static/lab-engine.mjs';
+import {landingSpot}from'../static/meadow-travel.mjs';
+import {LAKE,terrainHeight}from'../static/meadow-math.mjs';
+import {solidAt}from'../static/meadow-motion.mjs';
+test('replay model matches independent formatting and keeps prior slides intact',()=>{const initial=blankModel();const steps=[{action:'text',target:'title',value:'Hello'},{action:'bold',target:'title',value:true},{action:'addSlide',value:true},{action:'text',target:'body',value:'World'}];const final=modelAt(steps,4);assert.equal(final.pages[0].title.text,'Hello');assert.equal(final.pages[0].title.bold,true);assert.equal(final.pages[1].body.text,'World');assert.equal(initial.pages.length,1);assert.equal(modelAt(steps,2).pages.length,1);assert.equal(applyStep(initial,{action:'theme',value:'coral'}).theme,'coral');});
+test('BFS finds shortest path or detects no path and visits no wall',()=>{assert.equal(searchGrid([]).distance,14);assert.equal(searchGrid([1,8]).distance,-1);const walls=[3,11,19,27,35,43,45,46,47,49,50];const r=searchGrid(walls);assert.ok(r.path.every(n=>!walls.includes(n)));for(let i=1;i<r.path.length;i++){const a=r.path[i-1],b=r.path[i];assert.equal(Math.abs(a%8-b%8)+Math.abs(Math.floor(a/8)-Math.floor(b/8)),1);}});
+test('teleport rejects invalid targets and avoids water and physical rocks',()=>{assert.equal(landingSpot({x:NaN,z:2}),null);const water=landingSpot(LAKE,[]);assert.ok(Math.hypot(water.x-LAKE.x,water.z-LAKE.z)>=21.5);const obstacles=[{x:0,z:20,r:6,base:terrainHeight(0,20),height:10}];const p=landingSpot({x:0,z:20},obstacles);assert.ok(p);assert.ok(!solidAt(p.x,p.z,p.y,obstacles,.7));const edge=landingSpot({x:999,z:-999});assert.ok(Math.abs(edge.x)<205&&Math.abs(edge.z)<205);});
