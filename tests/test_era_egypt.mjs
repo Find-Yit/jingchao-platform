@@ -130,3 +130,52 @@ test('High and low quality both build, animate, lighten the load and dispose eve
     world.dispose();world.update(1/30,201,eraDefinition.spawn,false);
   }
 });
+// 从高处落下，按真实物理一直落到站稳为止
+function dropOnto(x,z,obstacles,y=70){
+  const m={...createMotion({x,z}),y,grounded:false};
+  for(let i=0;i<900&&!(m.grounded&&i>5);i++)stepMotion(m,{x:0,z:0,run:false,jumpHeld:false},1/30,obstacles,flat);
+  for(let i=0;i<20;i++)stepMotion(m,{x:0,z:0,run:false,jumpHeld:false},1/30,obstacles,flat);
+  return m;
+}
+test('Flying onto the pyramids lands on each stone course and on the smooth casing, neither sunk in nor floating',()=>{
+  const scene=new T.Scene(),world=buildEra(scene),obstacles=frameworkObstacles(world.obstacles);
+  // 与 buildEra 里的金字塔参数一致：x,z,底边,高,层数,外壳起始层
+  for(const [name,px,pz,size,height,layers,casing] of [['Khufu',0,-41,68,46,40,31],['Khafre',-70,-64,47,32,29,22],['queen',46,-49,12,8.5,12,9]]){
+    const dy=height/layers,half=size/2*(1+1/layers);
+    for(let row=1;row<layers-1;row+=Math.max(1,Math.floor(layers/9))){
+      // 取这一级台阶面（或外壳斜面）的中间位置落下
+      const d=(size*(1-row/layers)/2+size*(1-(row+1)/layers)/2)/2;
+      // 外壳从 casing 层起向上，盖住下面一级台阶的顶面
+      const stepped=row<casing-1,expect=stepped?(row+1)*dy:(half-d)*height/(size/2);
+      for(const [dx,dz] of [[0,d],[-d,0],[d*.4,-d]]){
+        const m=dropOnto(px+dx,pz+dz,obstacles);
+        assert.ok(m.grounded,`${name} row ${row}: not standing`);
+        assert.ok(Math.abs(m.y-expect)<(stepped?.05:.45),`${name} row ${row} at ${dx.toFixed(1)},${dz.toFixed(1)}: landed at ${m.y.toFixed(2)}, surface ${expect.toFixed(2)}`);
+      }
+    }
+    const top=dropOnto(px,pz,obstacles);assert.ok(top.y>height*.97&&top.y<height*(1+1/layers)+.3,`${name} apex landing ${top.y.toFixed(2)}`);
+  }
+  world.dispose();
+});
+test('The Sphinx, temple, obelisks, tombs, houses, palms and dunes can be stood on at their real height',()=>{
+  const scene=new T.Scene(),world=buildEra(scene),obstacles=frameworkObstacles(world.obstacles);
+  for(const [name,x,z,lo,hi] of [['sphinx back',29,11,4.6,5.3],['sphinx rump',29,8.2,4.3,5],['sphinx chest',29,17.2,6.1,6.9],['sphinx head',29,19.9,9.7,10.15],['sphinx paw',31.05,24,1.4,2],
+    ['hall roof',-56,12,8.4,8.6],['colonnade roof',-45.3,12,8.2,8.4],['obelisk tip',-37.4,6.4,9.6,10.2],['granary dome',-47.5,30.6,3.6,4],['scribe awning',-37.5,33,3.2,3.6],['big dune',-99,-102,6.6,7.1],['Menkaure capstone',68,-74,26.4,27]]){
+    const m=dropOnto(x,z,obstacles);assert.ok(m.grounded&&m.y>=lo&&m.y<=hi,`${name}: landed at ${m.y.toFixed(2)} (want ${lo}–${hi})`);
+  }
+  // 棕榈树冠：能落在树冠上，且树冠碰撞体不挡地面行走
+  const crowns=world.obstacles.filter(o=>o.canopy);assert.ok(crowns.length>40,`${crowns.length} tree crowns`);
+  for(const c of crowns){assert.ok(c.base>=1.8,'a crown blocks walking');assert.ok(c.walkable);}
+  const c=crowns.find(o=>Math.hypot(o.x+11.8,o.z-45.6)<1.5)||crowns[0],m=dropOnto(c.x,c.z,obstacles);
+  assert.ok(Math.abs(m.y-(c.base+c.height))<.05,`palm crown landing ${m.y.toFixed(2)}`);
+  world.dispose();
+});
+test('Low dunes can be climbed on foot, and walking off a roof drops back to the sand',()=>{
+  const scene=new T.Scene(),world=buildEra(scene),obstacles=frameworkObstacles(world.obstacles);
+  const m={...createMotion({x:-78,z:-100}),y:0};let peak=0;
+  for(let i=0;i<400;i++){const dx=-99-m.x,dz=-102-m.z,d=Math.hypot(dx,dz);if(d<.4)break;stepMotion(m,{x:dx/d,z:dz/d,run:false,jumpHeld:false},1/30,obstacles,flat);peak=Math.max(peak,m.y);}
+  assert.ok(peak>6.5,`walked up the dune only to ${peak.toFixed(2)}`);
+  const r=dropOnto(-56,12,obstacles);for(let i=0;i<200;i++)stepMotion(r,{x:1,z:0,run:true,jumpHeld:false},1/30,obstacles,flat);
+  assert.ok(r.y<.05&&r.x>-44,`walking off the hall roof ended at ${r.x.toFixed(1)}, y ${r.y.toFixed(2)}`);
+  world.dispose();
+});

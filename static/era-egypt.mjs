@@ -7,7 +7,7 @@ const metKingdom = {title:'大都会艺术博物馆 · 古王国的埃及',url:'
 export const eraDefinition = {
   id:'egypt', title:'古埃及金字塔', subtitle:'沙海之上，时间有了形状。',
   description:'沿着石板路走向金字塔，在柱廊、书吏营地和绿洲旁寻找建造与记录的秘密。场景为古王国主题的艺术化学习复原，建筑比例、绿洲位置与人物均为教学设计。',
-  period:'古埃及 · 古王国主题', accent:'#c89c57', sky:'#dce7e1', fog:'#ebdcbd', sun:'#ffe2ae', exposure:.98, groundLight:'#b39d76',
+  period:'古埃及 · 古王国主题', accent:'#c89c57', sky:'#8fbfdc', fog:'#ebe3d0', sun:'#ffd9a3', exposure:.9, groundLight:'#9c7b55',
   spawn:{x:0,z:52}, bounds:110,
   stations:[
     {id:'pyramid',title:'石层里的几何',teacher:'梅里 · 建造向导',role:'虚拟建造向导',x:0,z:4,color:'#b9925b',
@@ -80,9 +80,20 @@ export function buildEra(scene,{quality='normal'}={}) {
     return new T.Matrix4().compose(_p.set((a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2),_q,_s.set(rad,len,rad));
   }
   // —— 碰撞 ——
-  const solid=(x,z,hx,hz,height,base=0,extra={})=>obstacles.push({x,z,hx,hz,base,height,...extra});
-  const round=(x,z,r,height,base=0)=>obstacles.push({x,z,r,base,height});
+  // 实体默认可站立（顶面就是落脚面）；高处的树冠、外壳等 base≥1.8，不挡地面行走
+  const solid=(x,z,hx,hz,height,base=0,extra={})=>obstacles.push({x,z,hx,hz,base,height,walkable:true,...extra});
+  const round=(x,z,r,height,base=0,extra={})=>obstacles.push({x,z,r,base,height,walkable:true,...extra});
+  // 斜面/锥面分层：从 y0 到 y1，半宽从 h0 线性收到 h1，每层顶面取该层中间高度处的宽度
+  function slope(x,z,y0,y1,h0,h1,t=.42,shape='box') {
+    const n=Math.max(1,Math.round((y1-y0)/t));
+    for(let j=0;j<n;j++){const a=y0+(y1-y0)*j/n,b=y0+(y1-y0)*(j+1)/n,h=lerp(h0,h1,(j+.5)/n);if(h<.1)break;if(shape==='box')solid(x,z,h,h,b-a,a);else round(x,z,h,b-a,a);}
+  }
   const wet=(x,z,hx,hz)=>obstacles.push({x,z,hx,hz,base:-.3,height:.45,water:true});
+  // 低画质没有阴影贴图：记下树、房屋、人物的位置和高度，最后合成一批朝背光方向拉长的柔和投影
+  // 每条记录：[x,z,长,宽,朝向,形状(0 圆/1 棕榈叶/2 圆角矩形),高度]；阳光从西南上方照来，影子朝东北偏东
+  const blobs=[],SUN_DIR=[.848,-.53],SUN_RY=.559;
+  const blob=(x,z,len,wide,h,y=.07)=>{const off=.707*h*.5;blobs.push([x+SUN_DIR[0]*off,z+SUN_DIR[1]*off,len+.707*h*.75,wide,SUN_RY,0,y]);};
+  const boxShadow=(x,z,w,d,h,ry=0,y=.07)=>blobs.push([x+SUN_DIR[0]*.35*h,z+SUN_DIR[1]*.35*h,w+.6*h+.3,d+.38*h+.3,ry,2,y]);
   // 导览员、传送落点和默认镜头位置周围保持空地
   const keep=[[0,52,5],[1.5,62,4]];
   for(const s of eraDefinition.stations)keep.push([s.x,s.z,4.6],[s.x,s.z+3.3,4.2],[s.x+1,s.z+11,3.6],[s.x+1.5,s.z+16.6,3.2]);
@@ -97,6 +108,8 @@ export function buildEra(scene,{quality='normal'}={}) {
     box:prep(new T.BoxGeometry(1,1,1)),sph:prep(new T.SphereGeometry(1,14,10)),sphLo:prep(new T.SphereGeometry(1,8,6)),sphMin:prep(new T.SphereGeometry(1,6,4)),
     cyl:prep(new T.CylinderGeometry(1,1,1,14)),cylLo:prep(new T.CylinderGeometry(1,1,1,6)),cone4:prep(new T.ConeGeometry(1,1,4).rotateY(Math.PI/4)),
     rock:prep(new T.DodecahedronGeometry(1,0)),
+    // 石块：侧面自下而上由暗到亮，像接缝处的阴影，石层更清楚
+    block:(()=>{const g=new T.BoxGeometry(1,1,1),p=g.attributes.position,c=[];for(let i=0;i<p.count;i++){const k=p.getY(i)>0?1:.72;c.push(k,k,k);}g.setAttribute('color',new T.Float32BufferAttribute(c,3));return prep(g);})(),
     jar:prep(new T.LatheGeometry([[0,0],[.42,.02],[.68,.32],[.74,.78],[.52,1.16],[.3,1.3],[.36,1.42],[.3,1.44]].map(p=>new T.Vector2(p[0],p[1])),12))
   };
   const tapers=new Map();
@@ -203,7 +216,7 @@ export function buildEra(scene,{quality='normal'}={}) {
       .replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
         float egF=pow(1.0-clamp(dot(normal,normalize(vViewPosition)),0.0,1.0),3.0);
         float egG=pow(max(0.0,sin(egWP.x*1.7+egyptTime*.7)*sin(egWP.z*2.1-egyptTime*.55)),30.0);
-        totalEmissiveRadiance+=vec3(.42,.56,.58)*egF*.5+vec3(1.0,.93,.78)*egG*.18;`);
+        totalEmissiveRadiance+=vec3(.36,.52,.6)*egF*.32+vec3(1.0,.93,.78)*egG*.18;`);
   });
 
   // —— 批处理：stamp 实例化、bake 合并、actor 可动的实例 ——
@@ -262,7 +275,7 @@ export function buildEra(scene,{quality='normal'}={}) {
 
   // —— 天空：地平线与雾色一致，向上过渡到淡蓝，带太阳光晕、热浪和淡淡的卷云 ——
   const skyMat=own(new T.ShaderMaterial({side:T.BackSide,depthWrite:false,fog:false,
-    uniforms:{egyptTime:clock,uHorizon:{value:new T.Color(eraDefinition.fog)},uMid:{value:new T.Color('#e3e9dc')},uTop:{value:new T.Color('#a7cbd6')},uSun:{value:new T.Vector3(-48,80,30).normalize()},uDetail:{value:low?0:1}},
+    uniforms:{egyptTime:clock,uHorizon:{value:new T.Color(eraDefinition.fog)},uMid:{value:new T.Color('#bcd8e2')},uTop:{value:new T.Color('#6aa5d3')},uSun:{value:new T.Vector3(-48,80,30).normalize()},uDetail:{value:low?0:1}},
     vertexShader:'varying vec3 vDir;void main(){vec4 w=modelMatrix*vec4(position,1.0);vDir=w.xyz-cameraPosition;gl_Position=projectionMatrix*viewMatrix*w;gl_Position.z=gl_Position.w*.9999;}',
     fragmentShader:`uniform vec3 uHorizon,uMid,uTop,uSun;uniform float egyptTime,uDetail;varying vec3 vDir;
       float h21(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
@@ -290,6 +303,9 @@ export function buildEra(scene,{quality='normal'}={}) {
   const EXT=128,TEX=low?256:512,tex=new Uint8Array(TEX*TEX*4);
   const trails=[[-4,46,-27,42.5,1.4],[-4,30,-33,26,1],[4,29,25,31,1.3],[33,34,40,41,1.2],[46,57.5,72,57.5,1.1],[72,57.5,88,52,1.2],[-33,42,-46,44,1.3],[-46,44,-96,44,1.8],[-58,52,-58,60,1],[-60,59.5,-98,59.5,1.6],[-60,74,-98,74,1.2],
     [8,4,30,3,1.1],[30,3,50,8,1.2],[-12,2,-34,-2,1],[-52,-2,-70,-6,1.2],[-70,-6,-100,-6,1.4],[0,62,-3,104,1],[74,-46,74,40,.8],[84,48,74,48,1],[-36,46,-45,52,1]];
+  // 石料雪橇拖过、又被泼水压实的沙道（颜色更深）
+  const drags=[[-9.6,34,-7,22,.6],[-7,22,-5.4,15,.6],[-9.6,37,-10.6,48,.6],[-10.6,48,-14,66,.6],[-14,66,-10,86,.6],[-10,86,-5,108,.6]];
+  const dragBox=drags.map(t=>[Math.min(t[0],t[2])-2,Math.max(t[0],t[2])+2,Math.min(t[1],t[3])-2,Math.max(t[1],t[3])+2]);
   const trailBox=trails.map(t=>[Math.min(t[0],t[2])-t[4]-2,Math.max(t[0],t[2])+t[4]+2,Math.min(t[1],t[3])-t[4]-2,Math.max(t[1],t[3])+t[4]+2]);
   const SOIL={emmer:[150,130,94],barley:[160,138,98],flax:[128,128,90],veg:[118,124,82],flood:[118,108,84],fallow:[164,142,104]};
   // 低频噪声在粗网格上算好再双线性插值，省掉大部分逐像素开销
@@ -301,16 +317,18 @@ export function buildEra(scene,{quality='normal'}={}) {
     for(let q=0;q<trails.length;q++)if(z>trailBox[q][2]&&z<trailBox[q][3])rowTrails.push(q);
     for(let i=0;i<TEX;i++) {
       const x=-EXT+(i+.5)*px,n=bil(coarseN,i,j),f=(hash(i>>1,j>>1)+hash(i,j))*.5-.5;
-      let r=lerp(231,205,n)+f*8,g=lerp(212,180,n)+f*8,b=lerp(170,134,n)+f*7,rip=255;
+      let r=lerp(229,203,n)+f*8,g=lerp(199,170,n)+f*8,b=lerp(146,112,n)+f*7,rip=255;
       const gravel=bil(coarseG,i,j);
       if(gravel>0){const sp=hash(Math.floor(x*2.5),Math.floor(z*2.5))>.62?24:0;r=lerp(r,200-sp,gravel*.65);g=lerp(g,183-sp,gravel*.65);b=lerp(b,150-sp,gravel*.65);rip*=1-gravel*.75;}
       let dp=9;for(const q of rowTrails){const bb=trailBox[q],t=trails[q];if(x>bb[0]&&x<bb[1])dp=Math.min(dp,segDist(x,z,t[0],t[1],t[2],t[3])-t[4]);}
-      if(dp<1.6){const k=(1-smooth(-.8,1.6,dp))*.7;r=lerp(r,236,k);g=lerp(g,220,k);b=lerp(b,186,k);rip*=1-k;}
+      if(dp<1.6){const k=(1-smooth(-.8,1.6,dp))*.7;r=lerp(r,234,k);g=lerp(g,214,k);b=lerp(b,174,k);rip*=1-k;}
+      let dd=9;for(let q=0;q<drags.length;q++){const bb=dragBox[q],t=drags[q];if(x>bb[0]&&x<bb[1]&&z>bb[2]&&z<bb[3])dd=Math.min(dd,segDist(x,z,t[0],t[1],t[2],t[3])-t[4]);}
+      if(dd<1.2){const k=(1-smooth(-.3,1.1,dd))*.55;r=lerp(r,196,k);g=lerp(g,164,k);b=lerp(b,118,k);rip*=1-k*.8;}
       // 工地附近散落的石灰岩碎屑
       const chips=x>36&&x<68&&z>-10&&z<22?1-smooth(4,14,Math.hypot(x-52,z-6)):0;if(chips>0){const sp=hash(Math.floor(x*4),Math.floor(z*4))>.7?1:0;r=lerp(r,244-sp*20,chips*.6);g=lerp(g,236-sp*22,chips*.6);b=lerp(b,214-sp*26,chips*.6);rip*=1-chips;}
       // 营地与村落的夯土地面
       const yard=x<-58&&x>-102&&z>30&&z<86?.55:x<-31&&x>-56&&z>28&&z<40?.4:0;
-      if(yard){r=lerp(r,216,yard);g=lerp(g,196,yard);b=lerp(b,160,yard);rip*=1-yard;}
+      if(yard){r=lerp(r,212,yard);g=lerp(g,188,yard);b=lerp(b,148,yard);rip*=1-yard;}
       if(x>34) {
         // 到水边的距离：水池、引水渠、田间沟渠、河岸
         const dx=(x-POOL.x)/POOL.rx;let dw=bz-x;
@@ -338,28 +356,38 @@ export function buildEra(scene,{quality='normal'}={}) {
       diffuseColor.rgb=mix(diffuseColor.rgb,egD.rgb,egIn);
       float egR=mix(1.0,egD.a,egIn);
       float egS=fract(sin(dot(floor(egGP.xz*26.0),vec2(12.9898,78.233)))*43758.5453);
-      float egWv=egGP.x*2.1+egGP.z*.55+sin(egGP.z*.09+egGP.x*.031)*4.0+sin(egGP.x*.19+egGP.z*.05)*1.3;
-      float egRip=pow(.5+.5*sin(egWv),2.5)*(1.0-smoothstep(.6,1.6,fwidth(egWv)));
-      diffuseColor.rgb*=.975+egS*.035+(egRip-.3)*.11*egR;`);
+      float egWv=egGP.z*2.1+egGP.x*.55+sin(egGP.x*.09+egGP.z*.031)*4.0+sin(egGP.z*.19+egGP.x*.05)*1.3;
+      float egSl=smoothstep(.78,.94,abs(normalize(cross(dFdx(egGP),dFdy(egGP))).y));
+      float egFade=(1.0-smoothstep(.6,1.6,fwidth(egWv)))*egR*egSl;
+      float egRip=pow(.5+.5*sin(egWv),2.5);
+      diffuseColor.rgb*=.975+egS*.035+(egRip-.3)*.08*egFade;`)
+      .replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
+      float egW2=egGP.z*5.3+egGP.x*1.7+sin(egGP.x*.31+egGP.z*.07)*2.2+sin(egGP.z*.53-egGP.x*.21)*1.1;
+      float egF2=(1.0-smoothstep(.5,1.3,fwidth(egW2)))*egR*egSl;
+      float egDh=(cos(egWv)+.45*cos(2.0*egWv+.6))*.2*egFade,egDh2=(cos(egW2)+.4*cos(2.0*egW2+.4))*.05*egF2;
+      normal=normalize(normal+(viewMatrix*vec4(-egDh*.55-egDh2*1.7,0.0,-egDh*2.1-egDh2*5.3,0.0)).xyz);`);
   });
   // 地面网格：外围沙丘带有沙脊明暗，东岸是绿色农田，远处是石灰岩崖
-  const groundGeometry=new T.PlaneGeometry(620,620,200,200);groundGeometry.rotateX(-Math.PI/2);
-  {
+  // 高画质 200×200 格，低画质 100×100 格（可走区域都是平地，只影响外围沙丘与石崖的细腻程度）
+  const groundGeo={};
+  function makeGround(seg) {
+    const groundGeometry=new T.PlaneGeometry(620,620,seg,seg);groundGeometry.rotateX(-Math.PI/2);
     const gp=groundGeometry.attributes.position,gc=new Float32Array(gp.count*3),sc=new T.Color();
     for(let i=0;i<gp.count;i++) {
       const x=gp.getX(i),z=gp.getZ(i),y=terrainY(x,z),rx=riverX(z),n=fbm(x*.02,z*.02);gp.setY(i,y);
-      sc.setRGB(lerp(.88,.8,n)+Math.min(y/40,.04),lerp(.78,.7,n)+Math.min(y/40,.04),lerp(.6,.52,n)+Math.min(y/50,.03),T.SRGBColorSpace);
+      sc.setRGB(lerp(.88,.8,n)+Math.min(y/40,.04),lerp(.76,.67,n)+Math.min(y/40,.04),lerp(.55,.45,n)+Math.min(y/50,.03),T.SRGBColorSpace);
       if(x>rx-27&&x<rx+112&&y<1.5) {
         const d=x-rx,h=riverHalf(z);
         if(Math.abs(d)<h+3)sc.setRGB(.6,.55,.42,T.SRGBColorSpace);
         else{const pal=[[.62,.69,.45],[.72,.72,.5],[.56,.65,.4],[.66,.6,.43],[.79,.75,.54]][Math.floor(hash(Math.floor(x/15),Math.floor(z/11))*5)];sc.setRGB(...pal,T.SRGBColorSpace);}
       }
-      if(y>3&&x>rx+100)sc.setRGB(.9,.82,.7,T.SRGBColorSpace);
+      if(y>3&&x>rx+100){const band=.93+.07*Math.sin(y*1.15+fbm(z*.05,3)*2.5),top=smooth(20,26,y);sc.setRGB(lerp(.84,.93,top)*band,lerp(.72,.85,top)*band,lerp(.58,.72,top)*band,T.SRGBColorSpace);}
       gc[i*3]=sc.r;gc[i*3+1]=sc.g;gc[i*3+2]=sc.b;
     }
-    groundGeometry.setAttribute('color',new T.BufferAttribute(gc,3));groundGeometry.computeVertexNormals();
+    groundGeometry.setAttribute('color',new T.BufferAttribute(gc,3));groundGeometry.computeVertexNormals();return own(groundGeometry);
   }
-  const ground=new T.Mesh(own(groundGeometry),M.ground);ground.receiveShadow=true;ground.name='egypt-walkable-ground';root.add(ground);
+  const groundFor=q=>groundGeo[q]||(groundGeo[q]=makeGround(q==='low'?100:200));
+  const ground=new T.Mesh(groundFor(low?'low':'high'),M.ground);ground.receiveShadow=true;ground.name='egypt-walkable-ground';root.add(ground);
   // 场地外围与角落的沙丘（不可走，带碰撞），和地面共用材质，接缝自然
   function duneMound(cx,cz,R,H,dir) {
     const rings=10,segs=28,pos=[],idx=[],col=[];
@@ -369,14 +397,23 @@ export function buildEra(scene,{quality='normal'}={}) {
       if(k<rings){const a0=k*segs+j,b0=k*segs+(j+1)%segs;idx.push(a0,b0,b0+segs,a0,b0+segs,a0+segs);}
     }
     const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.setAttribute('color',new T.Float32BufferAttribute(col,3));g.setIndex(idx);g.computeVertexNormals();
-    zone='dunes';bakeRaw(g,M.ground,new T.Matrix4());round(cx,cz,R*.62,H);
+    zone='dunes';bakeRaw(g,M.ground,new T.Matrix4());
+    // 碰撞：0.22 m 一级的圆台，能一步步走上沙丘；圆心偏向沙丘拉长的一侧
+    const n=Math.ceil(H/.22);for(let j=0;j<n;j++){const y=H*(j+.5)/n,f=Math.sqrt(1-Math.pow(y/H,1/1.4)),r=R*f*.94;if(r<.3)break;round(cx+Math.cos(dir)*.45*R*f*.94,cz+Math.sin(dir)*.45*R*f*.94,r,H*(j+1)/n-H*j/n,H*j/n);}
+  }
+  // 出发点附近被风堆起的矮沙堆（不足 0.25 m，不设碰撞），和地面同一材质，颜色与沙纹无缝衔接
+  for(const [x,z,R,H,d] of [[-7.6,61.5,3.2,.24,2.6],[8.4,63.2,3.6,.22,2.4],[-6.6,53.6,2.2,.18,2.8],[9.6,52.4,2.6,.2,2.5],[-5.6,42.6,1.8,.16,2.7],[6.8,33.8,2.4,.2,2.6],[-24.6,49.6,2.8,.22,2.5],[22.6,47.2,3,.24,2.6],[3.4,67.8,3.4,.22,2.7],[-3.8,69.4,2.6,.2,2.5]]){
+    const rings=4,segs=14,pos=[],idx=[],col=[];
+    for(let k=0;k<=rings;k++)for(let j=0;j<segs;j++){const f=k/rings,a=j/segs*TAU,rr=R*f*(1+.5*Math.cos(a-d)),y=H*Math.pow(1-f*f,1.6*(1+.6*Math.max(0,-Math.cos(a-d))))-.03;pos.push(x+Math.cos(a)*rr,y,z+Math.sin(a)*rr*.6);col.push(1,1,1);
+      if(k<rings){const a0=k*segs+j,b0=k*segs+(j+1)%segs;idx.push(a0,b0,b0+segs,a0,b0+segs,a0+segs);}}
+    const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.setAttribute('color',new T.Float32BufferAttribute(col,3));g.setIndex(idx);g.computeVertexNormals();zone='dunes';bakeRaw(g,M.ground,new T.Matrix4());
   }
   for(const [x,z,R,H,d] of [[-97,97,17,6.5,.6],[-62,103,12,4,1],[-104,64,12,5,.2],[18,105,13,4.2,.8],[-106,-22,12,5,.4],[-99,-102,17,7,.9],[-24,-104,13,5,1.2],[44,-103,12,4.5,.3]])duneMound(x,z,R,H,d);
 
   // —— 水面：小绿洲水池、引水渠、田间沟渠、尼罗河 ——
   zone='water';
   {
-    const pos=[],col=[],idx=[],deep=new T.Color('#3f8f8c'),shallow=new T.Color('#7fb9a6'),c=new T.Color(),rings=7,segs=56;
+    const pos=[],col=[],idx=[],deep=new T.Color('#2f7f86'),shallow=new T.Color('#6aae9f'),c=new T.Color(),rings=7,segs=56;
     pos.push(POOL.x,.06,POOL.z);c.copy(deep);col.push(c.r,c.g,c.b);
     for(let k=1;k<=rings;k++)for(let j=0;j<segs;j++){
       const f=k/rings,a=j/segs*TAU,e=poolEdge(a)*1.03;pos.push(POOL.x+Math.cos(a)*POOL.rx*e*f,.06,POOL.z+Math.sin(a)*POOL.rz*e*f);
@@ -410,7 +447,7 @@ export function buildEra(scene,{quality='normal'}={}) {
   for(let z=-112;z<=112;z+=4){const b=Math.min(bankX(z-2),bankX(z+2))+.8;wet((b+114)/2,z,(114-b)/2,2);}
 
   // —— 金字塔 ——
-  const TONE=['#e6d3ac','#dfcaa1','#eadab6','#dbc59b','#e3d0a8'];
+  const TONE=['#e8d6b0','#dcc69d','#ecdcba','#d7c096','#e3cfa6'];
   function pyramid(x,z,size,height,layers,o={}) {
     zone=o.zone||'pyramids';
     const dy=height/layers,built=o.built??layers,from=Math.min(built,o.casing??layers),half=size/2*(1+1/layers),alpha=Math.atan2(height,size/2),hw=y=>half-size/2*y/height;
@@ -423,19 +460,21 @@ export function buildEra(scene,{quality='normal'}={}) {
         for(const sign of [-1,1]) {
           for(const side of [0,1]){
             const tint=_c.set(o.tone?o.tone(row,col):TONE[Math.floor(random()*TONE.length)]).multiplyScalar(rowShade*(random()<.06?.9:1)*(1+(random()-.5)*.03)).getHex();
-            if(side===0)stamp(G.box,M.vc,[x+d,y,z+sign*(w/2-depth/2)],[bw-.04,dy-.04,depth],[0,0,0],tint);
-            else stamp(G.box,M.vc,[x+sign*(w/2-depth/2),y,z+d],[depth,dy-.04,bw-.04],[0,0,0],tint);
+            if(side===0)stamp(G.block,M.vc,[x+d,y,z+sign*(w/2-depth/2)],[bw-.04,dy-.04,depth],[0,0,0],tint);
+            else stamp(G.block,M.vc,[x+sign*(w/2-depth/2),y,z+d],[depth,dy-.04,bw-.04],[0,0,0],tint);
           }
         }
       }
     }
-    for(let row=0;row<built;row++)solid(x,z,size*(1-row/layers)/2,size*(1-row/layers)/2,dy,row*dy,o.walkTop&&row===built-1?{walkable:true}:{});
+    // 碰撞：露出的每级石阶一块（顶面就是台阶面）；光滑外壳与塔尖按斜面分层，站上去不陷脚也不悬空
+    for(let row=0;row<from;row++){const h=size*(1-row/layers)/2;solid(x,z,h,h,dy,row*dy);}
+    if(from<built)slope(x,z,from*dy,height*(1+1/layers),hw(from*dy),0);
     // 光滑外壳：顶部保留，下缘参差剥落
     const slab=(yaw,along,y0,y1,width,tint)=>{
       const t=.34,yc=(y0+y1)/2,slant=(y1-y0)/Math.sin(alpha),lz=hw(yc)+.03-Math.sin(alpha)*t/2,ly=yc-Math.cos(alpha)*t/2;
       stamp(G.box,M.vc,[x+along*Math.cos(yaw)+lz*Math.sin(yaw),ly,z-along*Math.sin(yaw)+lz*Math.cos(yaw)],[width,slant,t],[alpha-Math.PI/2,yaw,0,'YXZ'],tint);
     };
-    if(from<layers) {
+    if(from<built) {
       const y0=from*dy,apex=height*(1+1/layers),cap=new T.ConeGeometry((hw(y0)+.03)*Math.SQRT2,apex-y0,4);cap.rotateY(Math.PI/4);
       bake(cap,M.vc,o.capTone||'#efe5ca',[x,(y0+apex)/2,z]);
       for(const yaw of [0,Math.PI/2,Math.PI,-Math.PI/2]){
@@ -461,16 +500,16 @@ export function buildEra(scene,{quality='normal'}={}) {
   pyramid(0,-41,68,46,40,{casing:31,gold:true,baseCasing:'#e9dcc0',plazaGap:15,drifts:5});
   pyramid(-70,-64,47,32,29,{casing:22,gold:false,capTone:'#f0e7cf',drifts:4});
   pyramid(68,-74,36,24.5,24,{gold:false,drifts:3,tone:row=>row<5?(random()<.5?'#d3b3a3':'#cdab9c'):TONE[Math.floor(random()*TONE.length)]});
-  {const g=new T.ConeGeometry(2.6,2.4,4);g.rotateY(Math.PI/4);zone='pyramids';bake(g,M.vc,'#e8dcc0',[68,24.5+1.15,-74]);}
+  {const g=new T.ConeGeometry(2.6,2.4,4);g.rotateY(Math.PI/4);zone='pyramids';bake(g,M.vc,'#e8dcc0',[68,24.5+1.15,-74]);slope(68,-74,24.45,26.85,1.84,0);}
   // 王后小金字塔：其中一座仍在施工
   pyramid(46,-49,12,8.5,12,{zone:'queens',casing:9,gold:true,drifts:0});
   pyramid(46,-33.5,12,8.5,12,{zone:'queens',casing:10,gold:true,drifts:0});
-  pyramid(46,-18,12,8.5,12,{zone:'queens',built:7,walkTop:true,drifts:0});
+  pyramid(46,-18,12,8.5,12,{zone:'queens',built:7,drifts:0});
   zone='queens';
   for(const z of [-49,-33.5]){bake(taper(.92),M.vc,'#e3d2ae',[54,0,z],[3,2.6,4]);bake(G.box,M.vc,'#5b4d3f',[55.55,1,z],[.1,1.6,.8]);solid(54,z,1.5,2,2.6);}
 
   // —— 施工坡道、石料堆与拖石块的工人 ——
-  zone='works';
+  zone='queens'; // 与王后金字塔同一批，少几次绘制
   const RAMP={x:46,z0:4,z1:-15.5,top:7*8.5/12};
   {
     const shape=new T.Shape([new T.Vector2(0,0),new T.Vector2(RAMP.z0-RAMP.z1,0),new T.Vector2(RAMP.z0-RAMP.z1,RAMP.top)]);
@@ -492,25 +531,67 @@ export function buildEra(scene,{quality='normal'}={}) {
 
   // —— 主路与金字塔前广场 ——
   zone='paving';
-  for(let row=0;row<44;row++)for(let col=0;col<4;col++){const z=58-row*1.5;if(row===0&&(col===0||col===3))continue;if(z<-4)continue;stamp(G.box,M.vc,[(col-1.5)*2.3,.03,z],[2.25,.06,1.45],[0,0,0],((row*7+col*3)%5===0)?'#d6c29d':((row+col)%2?'#e3d4b5':'#dccbaa'));}
+  for(let row=0;row<44;row++)for(let col=0;col<4;col++){const z=58-row*1.5;if(row===0&&(col===0||col===3))continue;if(z<-4)continue;const hv=hash(row*3+11,col*7+5);stamp(G.box,M.vc,[(col-1.5)*2.3+(hv-.5)*.06,.03+(hv-.5)*.016,z],[2.25,.06,1.45],[0,(hv-.5)*.03,0],hv<.12?'#cdb68e':hv>.9?'#ece0c4':((row*7+col*3)%5===0)?'#d6c29d':((row+col)%2?'#e3d4b5':'#dccbaa'));}
   for(const sx of [-1,1]){stamp(G.box,M.vc,[sx*4.85,.08,27],[.5,.16,62],[0,0,0],'#d2bf9b');}
   for(let i=-6;i<=6;i++)for(let j=0;j<9;j++){const x=i*1.8,z=-4.6+j*1.75;if(Math.abs(x)<4.7&&z>-4)continue;stamp(G.box,M.vc,[x,.03,z],[1.74,.06,1.69],[0,0,0],(i+j)%2?'#e0d0b0':'#d8c6a3');}
   // 风吹上石板的沙
-  for(let i=0;i<22;i++){const edge=i<12,x=edge?(i%2?1:-1)*rand(3.6,4.6):rand(-3.8,3.8),z=i<6?rand(52,58.5):rand(-2,56);stamp(G.sphMin,M.vc,[x,.03,z],[rand(.8,2.2),.075,rand(.4,1.1)],[0,rand(-.5,.5),0],'#dfc79a');}
+  for(let i=0;i<34;i++){const edge=i<20,x=edge?(i%2?1:-1)*rand(3.4,4.6):rand(-3.8,3.8),z=i<10?rand(50,58.5):rand(-2,56);stamp(G.sphMin,M.vc,[x,.03,z],[rand(.8,2.4),.08,rand(.4,1.2)],[0,rand(-.5,.5),0],i%3?'#e0c391':'#d9b983');}
   // 入口一对圆顶石碑，碑面只有抽象色带
   for(const sx of [-1,1]){const x=sx*6.8,z=56.6;stamp(G.box,M.vc,[x,.17,z],[1.3,.34,.8],[0,0,0],'#d8c6a2');stamp(G.box,M.vc,[x,1.12,z],[.9,1.56,.28],[0,0,0],'#e8dcc0');
     stamp(G.cyl,M.vc,[x,1.9,z],[.45,.28,.45],[Math.PI/2,0,0],'#e8dcc0');for(let b=0;b<3;b++)stamp(G.box,M.vc,[x,.85+b*.34,z+.15],[.68,.08,.02],[0,0,0],['#c98a6f','#86a8b2','#d9bf86'][b]);solid(x,z,.65,.4,2.2);}
+  // —— 出发点两侧：左边是拖石队的整备场，右边是工匠的面包房与歇脚棚（全部烘焙进同一批网格）——
+  const ROPE='#a3814f',MAT='#c8ab6c',MAT_EDGE='#9f8450',WOOD_D='#7a5b3f';
+  const coil=(x,z,r=.45)=>{bake(G.cylLo,M.vc,ROPE,[x,.09,z],[r,.18,r]);bake(G.cylLo,M.vc,'#8a6a42',[x,.1,z],[r*.82,.19,r*.82]);bake(G.cylLo,M.vc,'#6a5034',[x,.11,z],[r*.4,.2,r*.4]);};
+  const shelter=(x,z,w,d,h,ry=0)=>{
+    const c=Math.cos(ry),sn=Math.sin(ry),P=(a,b)=>[x+a*c+b*sn,z-a*sn+b*c];
+    for(const [a,b] of [[-w/2+.2,-d/2+.2],[w/2-.2,-d/2+.2],[-w/2+.2,d/2-.2],[w/2-.2,d/2-.2]]){const [px,pz]=P(a,b);bake(G.cylLo,M.vc,WOOD_D,[px,h/2,pz],[.07,h,.07]);round(px,pz,.14,h);}
+    bake(G.box,M.vc,MAT,[x,h+.04,z],[w,.08,d],[0,ry,0]);for(const s of [-1,1]){const [px,pz]=P(0,s*d/2);bake(G.box,M.vc,MAT_EDGE,[px,h-.06,pz],[w+.04,.2,.05],[0,ry,0]);}
+    for(let i=0;i<5;i++){const [px,pz]=P(-w/2+w*(i+.5)/5,0);bake(G.box,M.vc,MAT_EDGE,[px,h+.09,pz],[.05,.03,d],[0,ry,0]);}
+    obstacles.push({x,z,hx:w/2,hz:d/2,ry,base:h-.1,height:.24,walkable:true});blobs.push([x+SUN_DIR[0]*.707*h,z+SUN_DIR[1]*.707*h,w+.5,d+.4,ry,2,.07]);
+  };
+  {
+    // 整备场（出发点左前方）：雪橇和拖石队在演员层里，这里是绳索、撬杠、滚木、带红色记号的石料和记录棚
+    const sx0=-9.6,sz0=35.6;
+    for(const s of [-1,1]){bakeRaw(G.cylLo,M.vc,between([sx0+s*.55,.05,sz0-1.3],[sx0+s*.7+.3,.05,sz0-3.6],.035),ROPE);bakeRaw(G.cylLo,M.vc,between([sx0+s*.7+.3,.05,sz0-3.6],[sx0+s*.6+.9,.05,sz0-6.4],.035),ROPE);}
+    coil(-12.9,30.6);coil(-12.1,29.9,.34);coil(-7.4,39.2,.4);
+    for(const [x,z,r] of [[-13.4,39.2,.25],[-13.1,40,.2],[-13.7,40.7,.3]])bake(G.cylLo,M.vc,'#8d6a46',[x,.13,z],[.13,2.6,.13],[0,r,Math.PI/2]);round(-13.4,40,1.3,.4);
+    for(const [x,z,r] of [[-11.6,38.9,.9],[-11.1,39.6,1.0]])bake(G.cylLo,M.vc,'#937049',[x,.06,z],[.05,2.2,.05],[0,r,Math.PI/2]);
+    const pile=[[-16,31.2,0,1.6,1,1.25],[-16,32.6,0,1.5,1.05,1.2],[-17.7,31.9,0,1.4,.95,1.3],[-16.7,31.9,1,1.5,.9,1.2],[-14.6,34.2,0,1.5,1,1.2]];
+    pile.forEach(([x,z,lv,w,h,d],i)=>{const y=lv*1.02+h/2,ry=(i%3-1)*.06;bake(G.block,M.vc,i%3?'#ead9b6':'#e2cda4',[x,y,z],[w,h,d],[0,ry,0]);if(i%2===0)bake(G.box,M.vc,'#b4553f',[x+.2,y+.08,z+d/2+.005],[.5,.09,.02],[0,ry,0]);});
+    solid(-16.7,31.9,1.75,1.3,1.02);solid(-16.7,31.9,.75,.62,.92,1.02);solid(-14.6,34.2,.8,.65,1);
+    for(let i=0;i<16;i++)bake(G.rock,M.flat,'#efe4cc',[rand(-18.5,-13),.03,rand(29.5,35.5)],[rand(.07,.18),rand(.03,.07),rand(.06,.14)],[0,rand(0,6),0]);
+    shelter(-15.8,37.6,3.4,2.4,2.3);
+    for(let i=0;i<3;i++)bake(G.jar,M.vc,i%2?'#b98a62':'#c7976b',[-16.9+i*.7,0,38.3],[.42,.5,.42],[0,i,0]);round(-16.2,38.3,1.1,.75);
+    bake(G.box,M.vc,'#8f6c4b',[-15,.18,37.2],[.8,.36,.5]);
+    // 面包房（出发点右前方）：钟形面包模围着炉火，旁边是啤酒罐、面包筐和粮袋
+    shelter(13.2,43.6,4.6,3.2,2.5,.08);
+    const hx0=10.9,hz0=39.6;
+    for(let i=0;i<7;i++){const a=i/7*TAU;bake(G.rock,M.flat,'#9a8a74',[hx0+Math.cos(a)*.62,.12,hz0+Math.sin(a)*.62],[.24,.18,.2],[0,a,0]);}
+    bake(G.cylLo,M.vc,'#4a3b30',[hx0,.04,hz0],[.5,.06,.5]);for(let i=0;i<5;i++)bake(G.sphMin,M.vc,i%2?'#d0663a':'#a8452c',[hx0+Math.cos(i*1.3)*.24,.1,hz0+Math.sin(i*1.3)*.24],[.13,.07,.11]);
+    const mold=new T.CylinderGeometry(.11,.26,.46,8);prep(mold);resources.delete(mold);
+    for(let i=0;i<5;i++){const a=i/5*TAU+.3;bake(mold,M.vc,'#b4794f',[hx0+Math.cos(a)*.36,.3,hz0+Math.sin(a)*.36],[1,1,1],[Math.sin(a)*.5,0,-Math.cos(a)*.5]);}
+    for(let i=0;i<9;i++){const lv=i<5?0:i<8?1:2,k=i<5?i:i<8?i-5:0;bake(mold,M.vc,i%3?'#c08559':'#ad7550',[13.4+k*.48+lv*.24,.23+lv*.4,39.9],[1,1,1],[Math.PI,0,0]);}
+    round(hx0,hz0,.85,.3);solid(14.4,39.9,1.3,.35,1.1);
+    for(let i=0;i<4;i++)bake(G.jar,M.vc,i%2?'#b98a62':'#a87b55',[14.6+i*.68,0,44.6],[.46,.56,.46],[0,i,0]);solid(15.6,44.6,1.5,.5,.85);
+    for(const [x,z] of [[11.4,44.8],[10.6,44.1]]){bake(G.cylLo,M.vc,'#b08d55',[x,.17,z],[.36,.34,.36]);for(let i=0;i<4;i++)bake(G.sphMin,M.vc,'#c98d4e',[x+Math.cos(i*1.6)*.17,.36,z+Math.sin(i*1.6)*.17],[.15,.08,.15]);round(x,z,.4,.4);}
+    for(let i=0;i<3;i++){bake(G.sphLo,M.vc,i%2?'#dfcea8':'#d3c19a',[8.9+i*.62,.3,47],[.36,.32,.3],[0,i,0]);bake(G.cylLo,M.vc,'#efe6d0',[8.9+i*.62,.62,47],[.1,.12,.1]);}solid(9.5,47,1.1,.4,.7);
+    bake(G.cylLo,M.vc,WOOD_D,[17.2,.6,38.4],[.08,1.2,.08]);round(17.2,38.4,.15,1.2);
+    // 石板路边：散落的绳卷、陶罐、木橇板和石屑
+    coil(7.4,55.2,.38);bake(G.jar,M.vc,'#b5875f',[8.2,0,57.2],[.38,.44,.38]);bake(G.jar,M.vc,'#a97d58',[8.7,0,56.5],[.3,.36,.3],[.3,1,0]);round(8.4,56.9,.5,.6);
+    for(const s of [-1,1])bake(G.box,M.vc,'#8a6a4a',[-7.4+s*.5,.08,47.2],[.16,.16,2.4],[0,.2,0]);bake(G.box,M.vc,'#7a5b3f',[-7.4,.2,47.2],[1.2,.08,.18],[0,.2,0]);
+    for(let i=0;i<20;i++){const s=i%2?1:-1;bake(G.rock,M.flat,'#ece2cb',[s*rand(5.6,9),.02,rand(40,63)],[rand(.05,.12),rand(.02,.05),rand(.05,.1)],[0,rand(0,6),0]);}
+  }
   // 通往神庙的石板支路
   for(let x=-6;x>-33;x-=1.6)for(let k=-1;k<=1;k++)stamp(G.box,M.vc,[x,.025,12+k*1.25],[1.55,.05,1.2],[0,0,0],(Math.round(x)+k)%2?'#e8dabd':'#e1d1b0');
 
   // —— 金字塔学习站：分层模型、测量绳与石板覆盖的船坑 ——
-  zone='plaza';
+  zone='paving'; // 学习站广场与石板路同一批
   const WOOD_C='#8a6a4a',pebbleTmp=G.rock;
   {
     const mx=-7.6,mz=2.4;stamp(G.box,M.vc,[mx,.4,mz],[3.4,.8,3.4],[0,0,0],'#d8c5a0');
     for(let i=0;i<6;i++){const s=3*(1-i/6.4);stamp(G.box,M.vc,[mx,.93+i*.36,mz],[s,.26,s],[0,0,0],i%2?'#efe3c8':'#e2cda4');}
     {const g=new T.ConeGeometry(.42,.42,4);g.rotateY(Math.PI/4);bake(g,M.gold,'#ead08e',[mx,.8+6*.36+.2,mz]);}
-    solid(mx,mz,1.7,1.7,3.2);
+    solid(mx,mz,1.7,1.7,.8);for(let i=0;i<6;i++){const s=3*(1-i/6.4)/2;solid(mx,mz,s,s,.36,.8+i*.36);}solid(mx,mz,.22,.22,.3,2.96);
     for(const [x,z] of [[5.8,-1.6],[10.5,-1.6],[10.5,3.6]])stamp(G.cylLo,M.vc,[x,.32,z],[.05,.64,.05],[0,0,0],'#8a6a4a'),round(x,z,.12,.64);
     stamp(G.box,M.vc,[8.15,.55,-1.6],[4.7,.025,.025],[0,0,0],'#b89a6a');stamp(G.box,M.vc,[10.5,.55,1],[.025,.025,5.2],[0,0,0],'#b89a6a');
     // A 字水平仪与铅垂线
@@ -520,7 +601,7 @@ export function buildEra(scene,{quality='normal'}={}) {
     // 船坑盖石
     for(let i=0;i<12;i++)stamp(G.box,M.vc,[-27+i*1.05,.22,-4.4],[1,.44,2.3],[0,0,rand(-.02,.02)],i%3?'#e3d4b4':'#d9c8a6');
     stamp(G.box,M.vc,[-13.8,.55,-3.6],[1,.44,2.3],[.35,0,.1],'#e3d4b4');stamp(G.box,M.vc,[-14.85,.08,-4.4],[1,.12,2.1],[0,0,0],'#5a4a3d');
-    solid(-21,-4.4,7,1.2,.6);
+    solid(-21,-4.4,6.4,1.2,.44);
     // 石匠在修整石块：雪橇上的石料、碎屑、木槌与水罐
     stamp(G.box,M.vc,[8.8,.62,6],[1.9,1.05,1.3],[0,.12,0],'#e9ddc2');for(const s of [-1,1])stamp(G.box,M.vc,[8.8+s*.5,.08,6],[.14,.16,2.2],[0,.12,0],WOOD_C);
     stamp(G.box,M.vc,[11.8,.45,4.2],[1.6,.9,1.2],[0,-.3,0],'#e3d5b6');stamp(G.box,M.vc,[12.02,.4,4.8],[.4,.5,.02],[0,-.3,0],'#b45a43');
@@ -537,16 +618,19 @@ export function buildEra(scene,{quality='normal'}={}) {
   zone='sphinx';
   {
     const sx=29,sz=16,O=(x,y,z)=>[sx+x,y,sz+z];
-    const body='#dcc29a',head='#e6d0a8',stripeA='#ead8b1',stripeB='#c9a97a',rock='#cfb68b';
-    const strata=(x,y)=>.95+.05*smooth(-.3,.3,Math.sin(y*2.3))-(y<1.2?.05*(1-y/1.2):0);
-    bake(G.box,M.vc,rock,O(0,.35,0),[12.6,.7,22],[0,0,0],strata);solid(sx,sz,6.3,11,.7);
-    const torso=loft([[-9.5,2.0,.5,.6],[-8.9,2.3,2.1,1.8],[-7.3,2.6,2.95,2.35],[-5,2.65,2.75,2.35],[-2.5,2.85,2.55,2.5],[0,3.1,2.7,2.85],[2,3.55,2.8,3.25],[3.4,3.9,2.45,3.35],[4.3,3.95,1.75,3.1],[4.95,4.0,1.35,2.7],[5.35,3.95,.6,1.7]].map(([t,y,w,h])=>({t,y,w,h,p:t>1?2.7:2.5})),{seg:16});
+    const body='#dcc49e',head='#e6d2ad',stripeA='#ecdcb8',stripeB='#c4a274',rock='#c9b089';
+    // 石灰岩层理：硬层略亮、软层略暗，近地面风蚀更深
+    const strata=(x,y)=>.9+.1*smooth(-.35,.35,Math.sin(y*2.3))-(y<1.2?.06*(1-y/1.2):0);
+    bake(G.box,M.vc,rock,O(0,.35,0),[12.6,.7,22],[0,0,0],strata);blobs.push([sx+2.6,sz-1.5,6.4,19,0,2,.72]);solid(sx,sz,6.3,11,.7);
+    const TORSO=[[-9.5,2.0,.5,.6],[-8.9,2.3,2.1,1.8],[-7.3,2.6,2.95,2.35],[-5,2.65,2.75,2.35],[-2.5,2.85,2.55,2.5],[0,3.1,2.7,2.85],[2,3.55,2.8,3.25],[3.4,3.9,2.45,3.35],[4.3,3.95,1.75,3.1],[4.95,4.0,1.35,2.7],[5.35,3.95,.6,1.7]];
+    const LEG=[[.6,2.3,1.25,1.8],[3.5,1.4,1.05,1.0],[6,1.08,.95,.8],[8.5,1,1.1,.72],[9.9,.92,1.05,.6],[10.5,.84,.5,.32]];
+    const torso=loft(TORSO.map(([t,y,w,h])=>({t,y,w,h,p:t>1?2.7:2.5})),{seg:16});
     bakeRaw(torso,M.vc,compose(O(0,0,0),[1,1,1],[0,0,0]),body,strata);
     for(const s of [-1,1]){
       bake(G.sph,M.vc,body,O(s*2.2,3.3,2.5),[1.15,2.0,1.8],[0,0,0],strata);
       bake(G.sph,M.vc,body,O(s*2.55,2.2,-6.2),[1,1.75,2.6],[0,0,0],strata);
       bake(G.sph,M.vc,body,O(s*2.85,.95,-2.7),[.85,.55,1.7],[0,0,0],strata);
-      const leg=loft([[.6,2.3,1.25,1.8],[3.5,1.4,1.05,1.0],[6,1.08,.95,.8],[8.5,1,1.1,.72],[9.9,.92,1.05,.6],[10.5,.84,.5,.32]].map(([t,y,w,h])=>({t,y,x:s*2.05,w,h,p:2.4})),{seg:14});
+      const leg=loft(LEG.map(([t,y,w,h])=>({t,y,x:s*2.05,w,h,p:2.4})),{seg:14});
       bakeRaw(leg,M.vc,compose(O(0,0,0),[1,1,1],[0,0,0]),body,strata);
       for(let k=0;k<4;k++)bake(G.sphLo,M.vc,'#d5ba90',O(s*2.05+(k-1.5)*.5,.82,10.15),[.24,.3,.42]);
     }
@@ -571,8 +655,14 @@ export function buildEra(scene,{quality='normal'}={}) {
     for(const s of [-1,1])for(let i=0;i<8;i++)bake(G.box,M.vc,i%2?stripeB:stripeA,F(s*1.32,7.3-i*.3,.75+i*.05),[.52,.3,.34],[.08,0,s*.04]);
     bake(G.cyl,M.vc,'#d8b77e',F(0,9.08,1.06),[.16,.42,.14]);bake(G.sphLo,M.vc,'#d8b77e',F(0,9.33,1.13),[.14,.12,.13]);
     bake(G.cyl,M.vc,stripeB,F(0,6.6,-1.7),[.32,1.7,.32],[.35,0,0]);
-    round(sx,sz-2.5,3.2,7.2);solid(sx,sz-2,3.2,7.2,6.8);solid(sx,sz+4.1,1.6,1.5,10.2);
-    for(const s of [-1,1])solid(sx+s*2.05,sz+6,1.2,4.6,2.2);
+    // 碰撞贴着造型：身体每 0.9 m 一段（中间高、两侧低），前腿、后胯、头巾两翼和头部分层，能站在背上和头顶
+    const at=(arr,t,k)=>{let i=0;while(i<arr.length-2&&arr[i+1][0]<t)i++;const a=arr[i],b=arr[i+1];return lerp(a[k],b[k],clamp((t-a[0])/(b[0]-a[0]),0,1));};
+    for(let t=-9.5;t<5.3;t+=.9){const m=Math.min(t+.45,5.3),y=at(TORSO,m,1),w=at(TORSO,m,2),h=at(TORSO,m,3);solid(sx,sz+m,w*.55,.45,y+h*.96);solid(sx,sz+m,w*.86,.45,y+h*.72);}
+    for(const s of [-1,1]){
+      for(let t=.6;t<10.4;t+=1.2){const m=Math.min(t+.6,10.5),y=at(LEG,m,1),w=at(LEG,m,2),h=at(LEG,m,3);solid(sx+s*2.05,sz+m,w*.85,.6,y+h*.9);}
+      solid(sx+s*2.55,sz-6.2,.8,2,3.7);
+    }
+    solid(sx,sz+3.7,2.35,1,1.3,6.1);solid(sx,sz+3.8,1.4,1.5,1.5,7.4);solid(sx,sz+3.95,1.2,1.25,1.05,8.9);
     // 岩石围槽（只围住身后与两侧后半，前方开阔）
     for(const [x,z,w,d,h] of [[0,-11.6,21,2.2,3],[-10.2,-6,1.9,13,2.6],[10.2,-6,1.9,13,2.6],[-10.2,2.5,1.9,4,1.6],[10.2,2.5,1.9,4,1.6]]) {
       for(let l=0;l<3;l++)bake(G.box,M.flat,l%2?'#d6be95':'#ccb187',O(x+rand(-.15,.15),h*(l+.5)/3,z),[w-l*.25,h/3+.02,d-l*.2],[0,rand(-.01,.01),0]);
@@ -585,9 +675,9 @@ export function buildEra(scene,{quality='normal'}={}) {
   zone='temple';
   {
     const st=(x,y)=>.95+.05*smooth(-.4,.4,Math.sin(y*1.7+x*.1));
-    bake(taper(.94,.97),M.vc,'#e4d3b0',[-56,0,12],[12,7.4,24],[0,0,0],st);solid(-56,12,6,12,7.4);
+    bake(taper(.94,.97),M.vc,'#e4d3b0',[-56,0,12],[12,7.4,24],[0,0,0],st);boxShadow(-56,12,12,24.5,8.5);boxShadow(-45.3,12,8.8,22.2,8.3);solid(-56,12,6,12,7.4);
     bake(G.box,M.vc,'#8fb0b2',[-56,7.55,12],[11.6,.32,23.6]);bake(G.box,M.vc,'#cf9577',[-56,7.86,12],[11.6,.3,23.6]);
-    bake(G.box,M.vc,'#efe4c8',[-56,8.25,12],[12.5,.48,24.5]);solid(-56,12,6.25,12.25,1.2,7.4);
+    bake(G.box,M.vc,'#efe4c8',[-56,8.25,12],[12.5,.48,24.5]);solid(-56,12,6.25,12.25,1.09,7.4);
     // 殿门、门框与带翼日轮
     bake(G.box,M.vc,'#efe2c4',[-49.95,2.2,12],[.36,4.4,3.5]);bake(G.box,M.vc,'#5e4f40',[-49.72,1.85,12],[.12,3.7,2.2]);
     bake(G.cyl,M.gold,'#e8cf8c',[-49.7,4.9,12],[.36,.08,.36],[0,0,Math.PI/2]);
@@ -607,7 +697,7 @@ export function buildEra(scene,{quality='normal'}={}) {
     for(const x of [-47,-43])bake(G.box,M.vc,'#e9dbbb',[x,7.43,12],[1.35,.8,21.4]);
     bake(G.box,M.vc,'#e8d9b8',[-45.3,8.05,12],[8.8,.5,22.2]);bake(G.box,M.vc,'#86a7b9',[-45.3,7.79,12],[8.6,.04,21.8]);
     for(let i=0;i<34;i++)stamp(G.box,M.vc,[-45.3+rand(-4,4),7.76,12+rand(-10.5,10.5)],[.2,.02,.2],[0,Math.PI/4,0],'#f2dfa2');
-    solid(-45.3,12,4.4,11.1,.6,7.8);
+    solid(-45.3,12,4.4,11.1,.5,7.8);
     // 两侧墙与浮雕色带（抽象纹样，不是文字）
     for(const z of [.45,23.55]) {
       const out=z<12?-1:1;bake(taper(.96,.9),M.vc,'#e2d1ad',[-45.2,0,z],[10,7.8,1.1],[0,0,0],st);solid(-45.2,z,5,.55,7.8);
@@ -617,7 +707,8 @@ export function buildEra(scene,{quality='normal'}={}) {
     // 方尖碑（粉红花岗岩）与殿前坐像
     for(const z of [6.4,17.6]) {
       bake(G.box,M.vc,'#d9c7a3',[-37.4,.5,z],[2,1,2]);bake(G.box,M.vc,'#e6d6b6',[-37.4,1.05,z],[1.5,.1,1.5]);bake(taper(.56),M.vc,'#e2cdbd',[-37.4,1.1,z],[.95,8.4,.95],[0,0,0],(x,y)=>1-.03*Math.sin(y*3));
-      const g=new T.ConeGeometry(.38,.7,4);g.rotateY(Math.PI/4);bake(g,M.gold,'#ead08e',[-37.4,9.85,z]);solid(-37.4,z,1,1,9.9);
+      const g=new T.ConeGeometry(.38,.7,4);g.rotateY(Math.PI/4);bake(g,M.gold,'#ead08e',[-37.4,9.85,z]);
+      solid(-37.4,z,1,1,1.1);blobs.push([-37.4+SUN_DIR[0]*3.4,z+SUN_DIR[1]*3.4,7.6,1.1,SUN_RY,0,.07]);slope(-37.4,z,1.1,9.5,.46,.28,2.1);slope(-37.4,z,9.5,10.2,.25,0,.35);
     }
     const throne=kit(k=>{
       k.add(G.box,'#6f6b62',[0,.75,-.1],[1.3,1.5,1.5]).add(G.box,'#6f6b62',[0,.15,.4],[1.3,.3,2.2]);
@@ -637,7 +728,7 @@ export function buildEra(scene,{quality='normal'}={}) {
     for(const x of [-41.6,-37.5,-33.4])for(const z of [30.3,35.7]){stamp(G.cylLo,M.vc,[x,1.68,z],[.1,3.36,.1],[0,0,0],'#8a6a4a');round(x,z,.18,3.4);}
     const aw=new T.PlaneGeometry(9.6,6.2,12,8);aw.rotateX(-Math.PI/2);
     {const p=aw.attributes.position,c=[],cc=new T.Color();for(let i=0;i<p.count;i++){const x=p.getX(i),z=p.getZ(i),edge=Math.min(4.8-Math.abs(x),3.1-Math.abs(z));p.setY(i,-.28*Math.cos(x/4.8*Math.PI/2)*Math.cos(z/3.1*Math.PI/2));cc.set(edge<.35?'#7fb0a8':edge<.6?'#d9b27a':'#f3ead3');c.push(cc.r,cc.g,cc.b);}aw.setAttribute('color',new T.Float32BufferAttribute(c,3));aw.computeVertexNormals();}
-    bakeRaw(aw,M.cloth,compose([camp.x,3.42,camp.z],[1,1,1],[0,0,0]));
+    bakeRaw(aw,M.cloth,compose([camp.x,3.42,camp.z],[1,1,1],[0,0,0]));blobs.push([camp.x+SUN_DIR[0]*2.4,camp.z+SUN_DIR[1]*2.4,10,6.6,0,2,.07]);solid(camp.x,camp.z,4.8,3.1,.3,3.12);
     stamp(G.box,M.vc,[camp.x,.02,camp.z],[8.4,.03,4.8],[0,0,0],'#cdb683');
     for(const s of [-1,1]){bake(G.box,M.two,'#7fb0a8',[camp.x,3.2,camp.z+s*3.08],[9.5,.4,.03]);bake(G.box,M.two,'#d9b27a',[camp.x,2.98,camp.z+s*3.08],[9.5,.06,.035]);}
     for(const [x,z] of [[-39.8,32.3],[-35.6,32.1]]){stamp(G.box,M.vc,[x,.22,z+.75],[.9,.36,.5],[0,0,0],'#8f6c4b');stamp(G.cylLo,M.vc,[x-.2,.44,z+.75],[.05,.5,.05],[0,0,Math.PI/2],'#efe4c4');stamp(G.box,M.vc,[x+.25,.42,z+.72],[.3,.03,.1],[0,.2,0],'#5d4e3e');}
@@ -662,7 +753,7 @@ export function buildEra(scene,{quality='normal'}={}) {
     // 谷仓：抹白的圆顶粮仓
     for(const [x,z] of [[-47.5,30.6],[-51.6,30.6],[-47.5,34.8],[-51.6,34.8]]){
       bake(G.cyl,M.vc,'#ded0b4',[x,1.3,z],[1.6,2.6,1.6]);bake(G.sph,M.vc,'#e6dac2',[x,2.6,z],[1.6,1.3,1.6]);bake(G.box,M.vc,'#6e5b47',[x,3.3,z+.95],[.5,.4,.3],[.6,0,0]);bake(G.box,M.vc,'#6e5b47',[x+1.42,.55,z],[.2,.7,.6]);
-      round(x,z,1.7,3.9);
+      round(x,z,1.65,2.6);slope(x,z,2.6,3.9,1.55,.5,.43,'round');blob(x,z,3.2,3.2,3.9,.43);
     }
     stamp(G.box,M.vc,[-49.5,.2,32.7],[7.4,.4,7.6],[0,0,0],'#cdb995');
   }
@@ -680,12 +771,13 @@ export function buildEra(scene,{quality='normal'}={}) {
         for(const [px,pz,sx,sz] of [[0,d/2-.12,w,.24],[0,-d/2+.12,w,.24],[w/2-.12,0,.24,d],[-w/2+.12,0,.24,d]])bake(G.box,M.vc,tone,[cx+px*.97,h+.17,cz+pz*.97],[sx*.97,.34,sz*.97]);
         bake(G.box,M.vc,'#55463a',[cx+rand(-w/4,w/4),.95,cz+door*(d/2*.985)],[.95,1.9,.12]);
         if(random()<.7)bake(G.box,M.vc,'#55463a',[cx+rand(-w/3,w/3),h-.7,cz+door*(d/2*.975)],[.5,.32,.1]);
-        if(random()<.5){bake(G.box,M.two,'#b39b67',[cx+rand(-.8,.8),h+1.45,cz+rand(-.6,.6)],[2.6,.08,2.2]);for(const s of [-1,1])for(const t of [-1,1])stamp(G.cylLo,M.vc,[cx+s*1.1,h+.75,cz+t*.9],[.05,1.4,.05],[0,0,0],'#8a6a4a');}
+        if(random()<.5){const ax=cx+rand(-.8,.8),az=cz+rand(-.6,.6);bake(G.box,M.two,'#b39b67',[ax,h+1.45,az],[2.6,.08,2.2]);for(const s of [-1,1])for(const t of [-1,1])stamp(G.cylLo,M.vc,[ax+s*1.1,h+.75,az+t*.9],[.05,1.4,.05],[0,0,0],'#8a6a4a');solid(ax,az,1.3,1.1,.12,h+1.37);}
         if(random()<.35){bake(G.sph,M.vc,'#c9ad86',[cx+w/2+.9,0,cz+door*(d/2+.9)],[.85,.75,.85]);bake(G.box,M.vc,'#4e4034',[cx+w/2+.9,.3,cz+door*(d/2+.9)+door*.75],[.35,.3,.1]);round(cx+w/2+.9,cz+door*(d/2+.9),.9,.8);}
         if(random()<.5)for(let k=0;k<2;k++)stamp(G.jar,M.vc,[cx-w/2+.6+k*.7,0,cz+door*(d/2+.5)],[.38,.42,.38],[0,k,0],'#b98a62');
-        solid(cx,cz,w/2,d/2,h+.4);
+        // 平屋顶可站，四周矮墙单独一圈
+        solid(cx,cz,w/2,d/2,h+.03);boxShadow(cx,cz,w,d,h);for(const [px,pz,sx,sz] of [[0,d/2-.12,w,.24],[0,-d/2+.12,w,.24],[w/2-.12,0,.24,d],[-w/2+.12,0,.24,d]])solid(cx+px*.97,cz+pz*.97,sx*.97/2,sz*.97/2,.34,h);
         const back=cz-door*d/2,r=random();
-        if(r<.32){for(let k=0;k<3;k++){const sh=h*(k+1)/3.2;bake(G.box,M.vc,tone,[cx-w/2+.7+k*.85,sh/2,back-door*.5],[.85,sh,.95],[0,0,0],(x,y)=>.9+.08*Math.min(1,y/1.2));}solid(cx-w/2+1.55,back-door*.5,1.3,.5,h);}
+        if(r<.32){for(let k=0;k<3;k++){const sh=h*(k+1)/3.2;bake(G.box,M.vc,tone,[cx-w/2+.7+k*.85,sh/2,back-door*.5],[.85,sh,.95],[0,0,0],(x,y)=>.9+.08*Math.min(1,y/1.2));solid(cx-w/2+.7+k*.85,back-door*.5,.425,.475,sh);}}
         else if(r<.62){const yd=2.6,zc=back-door*yd/2;for(const [px,pz,sx,sz] of [[0,-door*yd/2,w-.2,.3],[-w/2+.25,0,.3,yd],[w/2-.25,0,.3,yd]]){bake(G.box,M.vc,tone,[cx+px,.65,zc+pz],[sx,1.3,sz]);solid(cx+px,zc+pz,sx/2,sz/2,1.3);}
           stamp(G.jar,M.vc,[cx+rand(-w/4,w/4),0,zc],[.4,.45,.4],[0,0,0],'#b98a62');}
         if(random()<.3)bake(G.box,M.vc,'#d9c37f',[cx+rand(-.6,.6),h+.05,cz+rand(-.8,.8)],[rand(1.4,2.2),.04,rand(1,1.6)]);
@@ -701,7 +793,8 @@ export function buildEra(scene,{quality='normal'}={}) {
     bake(taper(.86,.8),M.vc,random()<.5?'#e0cba5':'#d9c39b',[x,0,z],[w,h,d],[0,0,0],(x,y)=>.94+.06*smooth(-.3,.3,Math.sin(y*2.2)));
     bake(G.box,M.vc,'#ead9b7',[x,h+.07,z],[w*.86+.1,.14,d*.8+.1]);
     bake(G.box,M.vc,'#efe2c4',[x+w*.43*.92,1.05,z],[.18,2.1,1.15]);bake(G.box,M.vc,'#5e4f40',[x+w*.43*.92+.06,1,z],[.1,1.6,.5]);
-    solid(x,z,w/2,d/2,h+.15);
+    // 墓室外墙向内收：分三层碰撞，顶面就是屋顶石板
+    boxShadow(x,z,w,d,h);for(let l=0;l<3;l++){const y=l<2?(l+.5)/3:.9;solid(x,z,w/2*(1-.14*y),d/2*(1-.2*y),l<2?h/3:h/3+.14,h*l/3);}
     stamp(G.sphLo,M.vc,[x-w/2-.4,0,z+rand(-1,1)],[rand(1.5,3),rand(.6,1),1.3],[0,Math.PI/2,0],'#e3cda1');
   }
 
@@ -730,8 +823,14 @@ export function buildEra(scene,{quality='normal'}={}) {
     });
   }
   const PALMS=[palmKit(8.6,.7,18),palmKit(10.4,1.6,19),palmKit(6.6,.35,16)],PALM_FAR=palmKit(9,.8,8,true);
+  // 低画质换成少分段的叶片和树干（同样的位置和朝向），三角形约为高画质的三分之一
+  const PALMS_LO=[palmKit(8.6,.7,15,true),palmKit(10.4,1.6,16,true),palmKit(6.6,.35,13,true)];
   Object.assign(PALM_FAR.userData,{noShadow:true,thin:.45});
-  function palm(x,z,v=Math.floor(random()*3),s=rand(.86,1.12)){zone='palms';stamp(PALMS[v],M.palm,[x,0,z],[s,s,s],[0,random()*TAU,0]);round(x,z,.55,9);}
+  const PALM_SHAPE=[[8.6,.7],[10.4,1.6],[6.6,.35]];
+  // 树干两段（随倾斜偏移），树冠中心一块可站立的圆台
+  function palm(x,z,v=Math.floor(random()*3),s=rand(.86,1.12)){zone='palms';const yaw=random()*TAU,[h,lean]=PALM_SHAPE[v],ox=Math.cos(yaw)*lean*s,oz=-Math.sin(yaw)*lean*s;
+    stamp(PALMS[v],M.palm,[x,0,z],[s,s,s],[0,yaw,0]);round(x+ox*.08,z+oz*.08,.42*s,h*s*.5);round(x+ox*.5,z+oz*.5,.36*s,h*s*.5-.5,h*s*.5);round(x+ox,z+oz,1.5*s,.8,h*s-.55,{canopy:true});
+    const H=h*s;blobs.push([x+ox+SUN_DIR[0]*.707*H,z+oz+SUN_DIR[1]*.707*H,5.4*s,5*s,yaw,1,.07]);blobs.push([x+(ox+SUN_DIR[0]*.707*H)*.5,z+(oz+SUN_DIR[1]*.707*H)*.5,.707*H,.5*s,SUN_RY,0,.07]);}
   const papyrus=kit(k=>{
     for(let i=0;i<11;i++){const a=i*2.4,r=.12+(i%4)*.09,h=1.8+((i*7)%5)*.32,lean=.12+(i%3)*.06,tx=Math.cos(a)*(r+h*lean),tz=Math.sin(a)*(r+h*lean);
       k.limb([Math.cos(a)*r,0,Math.sin(a)*r],[tx,h,tz],.025,'#6f9a55',{g:G.cylLo});
@@ -759,8 +858,8 @@ export function buildEra(scene,{quality='normal'}={}) {
   zone='far';
   for(let i=0;i<110;i++){const z=rand(-280,280),side=i%3,x=side?riverX(z)+riverHalf(z)+rand(3,45):bankX(z)-rand(2,14);if(side===0&&Math.abs(z)<112)continue;const s=rand(.8,1.2);stamp(PALM_FAR,M.palm,[x,terrainY(x,z),z],[s,s,s],[0,random()*TAU,0]);}
   zone='trees';
-  for(const [x,z] of [[27,61],[70,61],[-56,46],[-88,58],[66,29],[88,-40]]){stamp(sycamore,M.vc,[x,0,z],[1,1,1],[0,random()*TAU,0]);round(x,z,.6,6);}
-  for(const [x,z] of [[-22,74],[26,82],[-58,98],[78,-102],[-20,-14],[16,96],[-104,30]]){if(!open(x,z,3))continue;const s=rand(.9,1.2);stamp(acacia,M.vc,[x,0,z],[s,s,s],[0,random()*TAU,0]);round(x,z,.4,4);}
+  for(const [x,z] of [[27,61],[70,61],[-56,46],[-88,58],[66,29],[88,-40]]){stamp(sycamore,M.vc,[x,0,z],[1,1,1],[0,random()*TAU,0]);blobs.push([x+SUN_DIR[0]*3,z+SUN_DIR[1]*3,6,5,SUN_RY,0,.07]);round(x,z,.55,3);round(x,z,2.5,2.1,3.3,{canopy:true});round(x,z,1.3,.6,5.4,{canopy:true});}
+  for(const [x,z] of [[-22,74],[26,82],[-58,98],[78,-102],[-20,-14],[16,96],[-104,30]]){if(!open(x,z,3))continue;const s=rand(.9,1.2);stamp(acacia,M.vc,[x,0,z],[s,s,s],[0,random()*TAU,0]);blobs.push([x+SUN_DIR[0]*2.3*s,z+SUN_DIR[1]*2.3*s,5*s,4.2*s,SUN_RY,0,.07]);round(x,z,.3*s,3.05*s);round(x,z,2.1*s,.62*s,3.05*s,{canopy:true});}
   // 纸莎草、芦苇、睡莲
   zone='marsh';
   for(let i=0;i<46;i++){const a=rand(-2.35,2.35)+(random()<.15?Math.PI:0);if(Math.cos(a)<-.75)continue;const e=poolEdge(a)*rand(.98,1.1),x=POOL.x+Math.cos(a)*POOL.rx*e,z=POOL.z+Math.sin(a)*POOL.rz*e;const s=rand(.8,1.25);stamp(papyrus,M.reed,[x,0,z],[s,s,s],[0,random()*TAU,0]);}
@@ -783,8 +882,8 @@ export function buildEra(scene,{quality='normal'}={}) {
   // 外围岩石台地（层状砂岩）
   for(const [cx,cz,n] of [[-101,96,5],[-104,12,4],[-34,104,4],[38,104,4],[-104,-64,5],[-60,-104,4]]) {
     for(let i=0;i<n;i++){const x=cx+rand(-5,5),z=cz+rand(-4,4),w=rand(3,7),d=rand(3,6),h=rand(1.6,4.5);
-      for(let l=0;l<3;l++)bake(G.box,M.flat,l%2?'#d9c19a':'#cbb089',[x,h*(l+.5)/3,z],[w*(1-l*.12),h/3+.02,d*(1-l*.1)],[rand(-.03,.03),rand(0,3),rand(-.03,.03)]);
-      solid(x,z,w/2+.3,d/2+.3,h);}
+      for(let l=0;l<3;l++){const rx=rand(-.03,.03),ry=rand(0,3),rz=rand(-.03,.03);bake(G.box,M.flat,l%2?'#d9c19a':'#cbb089',[x,h*(l+.5)/3,z],[w*(1-l*.12),h/3+.02,d*(1-l*.1)],[rx,ry,rz]);
+        solid(x,z,w*(1-l*.12)/2,d*(1-l*.1)/2,h/3,h*l/3,{ry});}}
   }
 
   // —— 农田：作物行、田埂 ——
@@ -801,7 +900,7 @@ export function buildEra(scene,{quality='normal'}={}) {
   stamp(G.box,M.vc,[80,.16,CANAL.z],[2.4,.12,4.2],[0,0,0],'#8f6d4c');for(const s of [-1,1])stamp(G.box,M.vc,[80+s*1.1,.42,CANAL.z],[.1,.5,4.2],[0,0,0],'#7a5b3f');
 
   // —— 码头：石砌河埠、石料、系船柱 ——
-  zone='quay';
+  zone='fields'; // 码头并入农田批次
   {
     const qx=bankX(53)-2.4;stamp(G.box,M.vc,[qx,.2,53],[5.2,.4,8.4],[0,0,0],'#d8c7a4');stamp(G.box,M.vc,[qx-3.1,.1,53],[1.2,.2,6],[0,0,0],'#cfbd99');
     solid(qx,53,2.6,4.2,.4,0,{walkable:true});solid(qx-3.1,53,.6,3,.2,0,{walkable:true});
@@ -866,12 +965,12 @@ export function buildEra(scene,{quality='normal'}={}) {
   // 静态人物
   const life=[
     ['scribe',-39.8,31.4,0],['scribe',-35.6,31.2,-.2],['official',-34.4,32.6,.5],['man',-24.6,31.6,-2.2],['porter',-26.6,35.4,2.6],
-    ['bender',55.4,6.8,-.6],['bender',58.6,10.2,2.8],['official',52.6,12.4,-1.9],['worker',45.2,-16.8,0,RAMP.top],['worker',47.2,-19.3,2.5,RAMP.top],
+    ['bender',55.4,6.8,-.6],['bender',58.6,10.2,2.8],['official',53.8,13.9,-2.2],['worker',45.2,-16.8,0,RAMP.top],['worker',47.2,-19.3,2.5,RAMP.top],
     ['priest',-38.8,12,1.57],['woman',-37,20.4,-1.2],['bender',-70.5,41.6,.3],['woman',-84,47,3.1],['man',-79.5,41.3,0],
     ['jarWoman',46.4,39.6,1.2],['bender',68.5,-8,1],['bender',78.5,14,-2],['man',70.5,22.3,.4],['bender',66.5,72,.8],['worker',86.9,51.8,1.3,.2],['worker',87.2,54.5,-1.4,.2],
-    ['man',-8.2,56,.4],['woman',-6.9,56.3,-.3],['worker',58.8,13.2,3.6]
+    ['man',-7.6,53,1.14],['woman',-6.4,53.5,-2],['worker',58.8,13.2,3.6]
   ];
-  for(const [t,x,z,yaw,y] of life)actor(P[t],M.actor,x,z,yaw,{y:y||0,s:rand(.94,1.05)});
+  for(const [t,x,z,yaw,y] of life){actor(P[t],M.actor,x,z,yaw,{y:y||0,s:rand(.94,1.05)});if(!y)blob(x,z,.6,.5,1.6);}
   actor(donkey,M.actor,-25.6,30.2,-.9);actor(donkey,M.actor,88.5,57.8,2.6);
   // 行走的人与驴
   const routes={
@@ -902,6 +1001,11 @@ export function buildEra(scene,{quality='normal'}={}) {
   const sled={it:actor(sledKit,M.actor,0,0,0),crew:[],ropes:[]};
   for(let i=0;i<6;i++)sled.crew.push({it:actor(P.hauler,M.actor,0,0,0,{walk:.7}),side:i%2?.62:-.62,ahead:2.6+Math.floor(i/2)*1.25});
   sled.crew.push({it:actor(P.official,M.actor,0,0,0,{walk:.6}),side:1.8,ahead:.6});
+  // 出发点两侧的静态人物：整备场的拖石队、书吏和挑水人；面包房的工匠与驴
+  actor(sledKit,M.actor,-9.6,35.6,Math.PI);solid(-9.6,35.6,.8,1.35,1.32);
+  for(const [t,x,z,yaw] of [['official',-11.8,34.4,1.2],['worker',-8.4,31.4,-2.5],['man',-10.6,30.2,2.6],['hauler',-8.2,29.2,Math.PI],['hauler',-9.6,28.6,Math.PI],['bender',-9.1,32.6,Math.PI],['scribe',-15.4,36.9,1.57],['yoke',-8.1,40.9,2.9],
+    ['woman',10.1,40.4,2.3],['bender',11.9,38.8,-1.1],['man',13.6,44.2,-2.9],['worker',12.5,45.2,2.8],['jarWoman',16.2,46.2,-1.9]]){actor(P[t],M.actor,x,z,yaw,{s:rand(.95,1.04)});blob(x,z,.6,.5,1.6);}
+  actor(donkey,M.actor,17.8,38.9,2.5);
   const ropeG=prep(new T.CylinderGeometry(.025,.025,1,4),{noShadow:true});
   for(const side of [-.62,.62])sled.ropes.push({it:actor(ropeG,M.vc,0,0,0),side});
   // 船：古王国式的高窄方帆船、划桨船、纸莎草小舟、运石驳船
@@ -966,6 +1070,25 @@ export function buildEra(scene,{quality='normal'}={}) {
 
   flush();
 
+  // —— 低画质的柔和投影：一张径向渐变小贴图 + 一批实例化平面（高画质用真实阴影，不显示）——
+  // 三格贴图：柔和圆斑、棕榈叶冠、圆角矩形；每个实例用 blobKind 选格
+  const BT=64,bt=new Uint8Array(BT*3*BT*4);
+  for(let j=0;j<BT;j++)for(let i=0;i<BT*3;i++){
+    const k=Math.floor(i/BT),u=((i%BT)+.5)/BT*2-1,v=(j+.5)/BT*2-1,r=Math.hypot(u,v),o=(j*BT*3+i)*4;let a;
+    if(k===0)a=1-smooth(.15,1,r);
+    else if(k===1){const th=Math.atan2(v,u)+r*.5,w=Math.max(.06,.34-.24*r),c=Math.cos(9*th);a=Math.max(smooth(Math.cos(Math.min(Math.PI,9*w*1.5)),Math.cos(9*w*.55),c)*(1-smooth(.78,1,r)),1-smooth(.12,.32,r))*(.75+.25*(1-r));}
+    else{const q=Math.pow(Math.abs(u)**6+Math.abs(v)**6,1/6);a=1-smooth(.8,1,q);}
+    bt[o]=bt[o+1]=bt[o+2]=255;bt[o+3]=255*clamp(a,0,1);
+  }
+  const blobTex=own(new T.DataTexture(bt,BT*3,BT,T.RGBAFormat));blobTex.magFilter=blobTex.minFilter=T.LinearFilter;blobTex.needsUpdate=true;
+  const blobMat=own(new T.MeshBasicMaterial({color:'#6b4a2b',map:blobTex,transparent:true,opacity:.38,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}));
+  blobMat.customProgramCacheKey=()=>'egypt-blob';
+  blobMat.onBeforeCompile=sh=>{sh.vertexShader='attribute float blobKind;\n'+sh.vertexShader.replace('#include <uv_vertex>','#include <uv_vertex>\nvMapUv.x=(vMapUv.x+blobKind)/3.0;');};
+  const blobGeo=own(new T.PlaneGeometry(1,1).rotateX(-Math.PI/2)),blobMesh=new T.InstancedMesh(blobGeo,blobMat,blobs.length);blobMesh.name='egypt-soft-shadows';
+  blobGeo.setAttribute('blobKind',new T.InstancedBufferAttribute(new Float32Array(blobs.map(b=>b[5])),1));
+  blobs.forEach(([x,z,l,w,ry,k,y],i)=>blobMesh.setMatrixAt(i,compose([x,y,z],[l,1,w],[0,ry,0])));
+  blobMesh.renderOrder=-1;root.add(blobMesh);
+
   // —— 漂浮的沙尘 ——
   const dustG=own(new T.BufferGeometry()),dust=[];
   for(let i=0;i<220;i++)dust.push(rand(-80,80),rand(.4,6),rand(-60,95));
@@ -973,9 +1096,12 @@ export function buildEra(scene,{quality='normal'}={}) {
   const dustMat=own(new T.PointsMaterial({color:'#fff2cf',size:.06,transparent:true,opacity:.32,depthWrite:false}));
   const dustCloud=new T.Points(dustG,dustMat);root.add(dustCloud);
 
+  const palmMeshes=root.children.filter(o=>o.isInstancedMesh&&PALMS.includes(o.geometry)).map(mesh=>({mesh,i:PALMS.indexOf(mesh.geometry)}));
   function setQuality(value) {
-    low=value==='low';dustCloud.visible=!low;skyMat.uniforms.uDetail.value=low?0:1;
+    low=value==='low';dustCloud.visible=!low;blobMesh.visible=low;skyMat.uniforms.uDetail.value=low?0:1;
     for(const t of thin)t.mesh.count=low?Math.ceil(t.full*t.keep):t.full;
+    for(const p of palmMeshes)p.mesh.geometry=(low?PALMS_LO:PALMS)[p.i];
+    ground.geometry=groundFor(low?'low':'high');
   }
   setQuality(quality);
   const tmp={x:0,y:0,z:0,h:0};
