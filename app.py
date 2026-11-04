@@ -178,13 +178,22 @@ def auth(role=None):
     return decorator
 
 
-def throttle(bucket, maximum=10, seconds=60):
-    key = bucket + ':' + str(session.get('uid') or request.remote_addr)
+def bump_limit(key, seconds):
     current = time.time()
     db().execute('DELETE FROM limits WHERE expires<?', (current,))
     db().execute('INSERT INTO limits(bucket,count,expires) VALUES(?,1,?) ON CONFLICT(bucket) DO UPDATE SET count=count+1', (key, current+seconds))
     db().commit()
-    if one('SELECT count FROM limits WHERE bucket=?', (key,))['count'] > maximum:
+    return one('SELECT count FROM limits WHERE bucket=?', (key,))['count']
+
+
+def limit_count(key):
+    row = one('SELECT count FROM limits WHERE bucket=? AND expires>=?', (key, time.time()))
+    return row['count'] if row else 0
+
+
+def throttle(bucket, maximum=10, seconds=60):
+    key = bucket + ':' + str(session.get('uid') or request.remote_addr)
+    if bump_limit(key, seconds) > maximum:
         fail('操作较频繁，请稍后再试', 429)
 
 
@@ -250,6 +259,7 @@ def security_headers(response):
 @app.errorhandler(401)
 @app.errorhandler(403)
 @app.errorhandler(404)
+@app.errorhandler(405)
 @app.errorhandler(409)
 @app.errorhandler(413)
 @app.errorhandler(429)
@@ -284,11 +294,18 @@ def health():
 
 @app.post('/api/login')
 def login():
-    throttle('login', 12, 300)
+    # A whole class often shares one school IP, so the IP cap is generous and
+    # wrong passwords are limited per account instead.
+    throttle('login-ip', 300, 300)
     data = payload()
-    user = one('SELECT * FROM users WHERE username=?', (text_field(data, 'username', 60),))
+    username = text_field(data, 'username', 60)
+    failures = 'login-fail:' + username.lower()
+    if limit_count(failures) >= 8:
+        fail('这个账号尝试次数过多，请 10 分钟后再试，或请老师重置密码', 429)
+    user = one('SELECT * FROM users WHERE username=?', (username,))
     password = text_field(data, 'password', 200)
     if not user or not check_password_hash(user['password'], password):
+        bump_limit(failures, 600)
         fail('账号或密码不正确', 401)
     session.clear()
     session.update(uid=user['id'], csrf=secrets.token_urlsafe(24))
@@ -299,7 +316,7 @@ def login():
 
 @app.post('/api/register')
 def register():
-    throttle('register', 8, 3600)
+    throttle('register', 60, 3600)
     data = payload()
     c = one('SELECT * FROM classes WHERE code=?', (text_field(data, 'code', 20).upper(),))
     if not c:
@@ -409,6 +426,62 @@ def add_student(cid):
     return jsonify(id=uid)
 
 
+@app.put('/api/classes/<int:cid>')
+@auth('teacher')
+def update_class(cid):
+    my_class(cid, True)
+    data = payload()
+    name = text_field(data, 'name', 60)
+    execute('UPDATE classes SET name=?,grade=COALESCE(NULLIF(?,""),grade),subject=COALESCE(NULLIF(?,""),subject) WHERE id=?',
+            (name, text_field(data, 'grade', 40, False), text_field(data, 'subject', 40, False), cid))
+    audit('修改班级信息')
+    return jsonify(ok=True)
+
+
+@app.post('/api/classes/<int:cid>/code')
+@auth('teacher')
+def regenerate_code(cid):
+    my_class(cid, True)
+    for _ in range(5):
+        code = secrets.token_hex(4).upper()
+        if not one('SELECT 1 FROM classes WHERE code=?', (code,)):
+            break
+    execute('UPDATE classes SET code=? WHERE id=?', (code, cid))
+    audit('更换班级邀请码')
+    return jsonify(code=code)
+
+
+def class_student(cid, uid):
+    my_class(cid, True)
+    student = one('SELECT u.id,u.name,u.username FROM users u JOIN members m ON m.user_id=u.id WHERE m.class_id=? AND u.id=? AND u.role=?', (cid, uid, 'student'))
+    if not student:
+        fail('这个学生不在班级里', 404)
+    return student
+
+
+@app.post('/api/classes/<int:cid>/students/<int:uid>/password')
+@auth('teacher')
+def reset_student_password(cid, uid):
+    student = class_student(cid, uid)
+    password = text_field(payload(), 'password', 200)
+    if len(password) < 10:
+        fail('新密码至少 10 位')
+    execute('UPDATE users SET password=? WHERE id=?', (generate_password_hash(password), student['id']))
+    db().execute('DELETE FROM limits WHERE bucket=?', ('login-fail:' + student['username'].lower(),))
+    db().commit()
+    audit('重置学生密码')
+    return jsonify(ok=True)
+
+
+@app.delete('/api/classes/<int:cid>/students/<int:uid>')
+@auth('teacher')
+def remove_student(cid, uid):
+    class_student(cid, uid)
+    execute('DELETE FROM members WHERE class_id=? AND user_id=?', (cid, uid))
+    audit('将学生移出班级')
+    return jsonify(ok=True)
+
+
 @app.get('/api/documents')
 @auth()
 def get_documents():
@@ -461,6 +534,23 @@ def update_document(rid):
 def delete_document(rid):
     owned('documents', rid)
     execute('DELETE FROM documents WHERE id=?', (rid,))
+    return jsonify(ok=True)
+
+
+@app.delete('/api/assignments/<int:rid>')
+@auth('teacher')
+def delete_assignment(rid):
+    a = assignment(rid)
+    my_class(a['class_id'], True)
+    submitted = one('SELECT count(*) n FROM submissions WHERE assignment_id=?', (rid,))['n']
+    if submitted and request.args.get('force') != '1':
+        fail(f'已有 {submitted} 份学生提交，删除会一并清除这些作答和批改', 409)
+    c = db()
+    c.execute('DELETE FROM grading_drafts WHERE submission_id IN (SELECT id FROM submissions WHERE assignment_id=?)', (rid,))
+    c.execute('DELETE FROM submissions WHERE assignment_id=?', (rid,))
+    c.execute('DELETE FROM assignments WHERE id=?', (rid,))
+    c.commit()
+    audit('删除作业')
     return jsonify(ok=True)
 
 
@@ -923,6 +1013,11 @@ def validate_endpoint(url):
 def settings_api():
     if request.method == 'PUT':
         data = payload()
+        if data.get('clear_key') and not text_field(data,'api_key',1000,False):
+            set_setting('api_key','')
+            audit('清除 AI 服务密钥')
+            return jsonify(base_url=setting('base_url','https://api.openai.com/v1'), model=setting('model',''), configured=False,
+                           events=rows('SELECT action,created FROM events WHERE user_id=? ORDER BY id DESC LIMIT 15', (g.user['id'],)))
         endpoint = validate_endpoint(text_field(data,'base_url',500))
         model = text_field(data,'model',120)
         key = text_field(data,'api_key',1000,False)
@@ -1147,6 +1242,19 @@ def save_agent():
     else:
         rid=execute('INSERT INTO agents(name,description,instructions,knowledge,class_id,published,owner_id) VALUES(?,?,?,?,?,?,?)',args+(g.user['id'],))
     return jsonify(id=rid)
+
+
+@app.delete('/api/agents/<int:rid>')
+@auth('teacher')
+def delete_agent(rid):
+    owned('agents', rid)
+    c = db()
+    c.execute('DELETE FROM messages WHERE agent_id=?', (rid,))
+    c.execute('UPDATE exploration_messages SET agent_id=NULL WHERE agent_id=?', (rid,))
+    c.execute('DELETE FROM agents WHERE id=?', (rid,))
+    c.commit()
+    audit('删除智能体')
+    return jsonify(ok=True)
 
 
 def accessible_agent(rid):

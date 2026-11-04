@@ -1,0 +1,55 @@
+/* 竞潮小学 v10 intro theme — loaded last. Same direction as the app: warm paper,
+   forest-green ink and actions, sunny/coral accents, solid readable surfaces. */
+:root{
+  --ink:#1b2a23;--ink-2:#33443b;--ink-3:#4f5e56;--ink-4:#66736b;--paper:#f6f4ee;--line:#1b2a231c;--line-2:#1b2a2333;
+  --night:#163a2e;--night-text:#d6e9de;--night-muted:#a9c7b7;--vis:#1f6b52;--vis-ink:#1f6b52;--fut:#d9653f;--fut-ink:#bf5232;
+  --sans:"HarmonyOS Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC",system-ui,sans-serif;
+  --t-green:#1f6b52;--t-green-2:#17543f;--t-sun:#f2b53c;--t-coral:#e2694a;--t-card:#fff;--t-line:#e3ded1;
+}
+html{background:var(--paper)!important}
+body{background:var(--paper) radial-gradient(1100px 560px at 100% -5%,#fbefd6 0,rgba(251,239,214,0) 60%) no-repeat!important;color:var(--ink);font-family:var(--sans)!important;-webkit-font-smoothing:antialiased}
+.intro-atmosphere{display:none!important}
+::selection{background:#d3e8dc}
+
+/* Navigation */
+.site-nav{background:rgba(255,255,255,.96)!important;border:1px solid var(--t-line)!important;box-shadow:0 1px 2px rgba(27,42,35,.05),0 10px 30px rgba(27,42,35,.08)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.site-nav,.site-nav *{color:var(--ink)}
+.nav-links a{font-size:14px!important;color:var(--ink-3)!important}
+.nav-links a:hover,.nav-links a[aria-current],.nav-links a.active{color:var(--t-green-2)!important;background:#e7f2ec!important}
+.nav-button--solid,.nav-button.nav-button--solid{background:var(--t-green)!important;color:#fff!important;border-color:var(--t-green)!important;font-size:14px!important}
+
+/* Type */
+.hero-title{color:var(--ink)!important;letter-spacing:-.04em!important;font-weight:800!important}
+.hero-title em,.closing em{background:linear-gradient(110deg,#1f6b52 0%,#2f8a66 55%,#d99a1e 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important}
+.section-header h2,.shot-copy h2,.shot-copy h3,.meadow-film-copy h2,.meadow-film-copy h3,.meadow-film-heading h2,section h2{color:var(--ink)!important;letter-spacing:-.03em!important;font-weight:780!important}
+.section-header p,.shot-copy p,.meadow-film-copy p,section p{color:var(--ink-3)}
+.eyebrow,.section-kicker,.kicker,[class*="eyebrow"],[class*="kicker"]{color:var(--t-green)!important;letter-spacing:.14em!important;font-weight:700!important}
+
+/* Buttons */
+.button,.demo-button{font-size:15px!important;font-weight:650!important;border-radius:14px!important;min-height:46px!important}
+.button:not(.button--ghost):not(.button--light),.demo-button.primary{background:var(--t-green)!important;color:#fff!important;border:1px solid var(--t-green)!important;box-shadow:0 8px 20px rgba(31,107,82,.22)!important}
+.button--ghost,.demo-button,.demo-button.quiet{background:#fff!important;color:var(--ink-2)!important;border:1px solid #cfc8b6!important;box-shadow:none!important}
+.button--light{background:#fff!important;color:var(--t-green-2)!important;border:0!important}
+
+/* Surfaces (formerly frosted glass) */
+:is(.meadow-film-media,.meadow-film-chapters,.meadow-film-lesson,.teaching-media,.teaching-chapters,.studio-gallery,.video-showcase,.student-question,.idea-browser,.meadow-glass,.hero-window,.hero-mini,.hero-floating,.shot-media,.shot-note,.chapter-dock,.limits li,.workflow-explorer,.space-item,.dual-note,.evidence-screen,.evidence-notes article,.evidence-footnote,.case-figure,.case-outcome,.start-steps li,.faq-list details){
+  background:var(--t-card)!important;border:1px solid var(--t-line)!important;box-shadow:0 1px 2px rgba(27,42,35,.05),0 10px 28px rgba(27,42,35,.07)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.section--tint{background:#efece3!important}
+.chapter-dock button,.teaching-chapters button,.meadow-film-chapters button,.meadow-film-chapters a{font-size:13.5px!important;color:var(--ink-3)!important}
+.chapter-dock [aria-selected=true],.chapter-dock .is-active,.teaching-chapters .is-active,.meadow-film-chapters .is-active,.chapter-dock [aria-current]{background:#e7f2ec!important;color:var(--t-green-2)!important}
+
+/* Closing band */
+.closing,.closing.is-dark{background:radial-gradient(700px 360px at 80% 10%,rgba(242,181,60,.22),rgba(242,181,60,0) 60%),linear-gradient(150deg,#163a2e,#1f6b52)!important;color:#fff}
+.closing h2,.closing p,.closing .hero-title{color:#fff!important}
+.closing em{background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;color:#ffd277!important}
+.footer{background:var(--paper)!important;color:var(--ink-3)!important}
+
+/* Small print floor */
+.shot-note,.shot-note *,.case-outcome small,.space-item small,.start-steps small,figcaption{font-size:max(13px,1em)}
+
+/* Keynote stage ambience: replace lavender/blue wash with the warm paper tone */
+.keynote-ambient{background:linear-gradient(180deg,#f6f4ee,#efece3)!important}
+.keynote-ambient *{display:none!important}
+
+/* Heading highlights: one accent family instead of blue/purple */
+section :is(h2,h3) :is(em,strong,span[class*="accent"]),.shot-copy :is(h2,h3) :is(em,span){background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;color:#2f8a66!important;-webkit-text-fill-color:currentColor!important}

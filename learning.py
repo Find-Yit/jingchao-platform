@@ -127,7 +127,7 @@ def register(app, h):
         history=rows('SELECT role,content,created FROM companion_messages WHERE user_id=? ORDER BY id DESC LIMIT 30',(uid,))[::-1]
         if request.method=='GET':return jsonify(history=history,help=help_items,configured=bool(h['setting']('api_key')))
         message=tf(payload(),'message',2500);context=payload().get('page','dashboard')
-        if not isinstance(context,str) or context not in ('dashboard','practice','lab','explore','assignments','lesson','grading','analytics','agents','resources','studio','design','reflection','classes','showcase','settings','insights'):context='dashboard'
+        if not isinstance(context,str) or context not in ('dashboard','practice','lab','explore','assignments','lesson','grading','analytics','agents','resources','studio','design','reflection','classes','showcase','settings','insights','lessonkit','portals','pets','webstudio'):context='dashboard'
         prompt=SYSTEM+'\n当前角色：'+g.user['role']+'；当前页面：'+context+'\n真实功能说明：'+jdump(help_items)+'\n算法实验场支持在网格放置障碍、预测最短路径长度、单步运行广度优先搜索，检查练习并保存记录。'
         answer=h['ai']([dict(role='system',content=prompt)]+[dict(role=x['role'],content=x['content']) for x in history[-10:]]+[dict(role='user',content=message)],1400)
         db().executemany('INSERT INTO companion_messages(user_id,role,content,created) VALUES(?,?,?,?)',[(uid,'user',message,now()),(uid,'assistant',answer,now())]);db().commit()
