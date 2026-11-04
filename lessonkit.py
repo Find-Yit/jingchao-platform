@@ -177,12 +177,12 @@ def register(app, h):
         data=h['payload']();cid=data.get('class_id')
         if type(cid) is not int: h['fail']('请先选择自己的班级')
         h['my_class'](cid,True)
-        previous=h['one']("SELECT * FROM lesson_kits WHERE owner_id=? AND class_id=? AND source='builtin' ORDER BY id DESC LIMIT 1",(g.user['id'],cid))
+        previous=h['one']("SELECT * FROM lesson_kits WHERE owner_id=? AND class_id=? AND source='builtin' AND lesson_id IS NOT NULL AND assignment_id IS NOT NULL ORDER BY id DESC LIMIT 1",(g.user['id'],cid))
         if previous: return jsonify(present(previous))
         config,body,slides,a=example_materials();stamp=h['now']();c=h['db']()
         c.execute('BEGIN IMMEDIATE')
         with c:
-            previous=h['one']("SELECT * FROM lesson_kits WHERE owner_id=? AND class_id=? AND source='builtin' ORDER BY id DESC LIMIT 1",(g.user['id'],cid))
+            previous=h['one']("SELECT * FROM lesson_kits WHERE owner_id=? AND class_id=? AND source='builtin' AND lesson_id IS NOT NULL AND assignment_id IS NOT NULL ORDER BY id DESC LIMIT 1",(g.user['id'],cid))
             if previous: return jsonify(present(previous))
             lid=c.execute('INSERT INTO documents(owner_id,kind,title,body,meta,class_id,created,updated,demo) VALUES(?,?,?,?,?,?,?,?,1)',(g.user['id'],'lesson',config['topic']+'（备课包示例）',body,h['jdump']({'context':config,'source':'lesson_kit_example'}),cid,stamp,stamp)).lastrowid
             aid=c.execute('INSERT INTO assignments(teacher_id,class_id,title,description,questions,created,demo) VALUES(?,?,?,?,?,?,1)',(g.user['id'],cid,a['title'],a['description'],h['jdump'](a['questions']),stamp)).lastrowid
@@ -192,6 +192,12 @@ def register(app, h):
     @app.get('/api/lesson-kits/<int:kid>')
     @h['auth']('teacher')
     def kit_get(kid): return jsonify(present(owned(kid)))
+
+    @app.delete('/api/lesson-kits/<int:kid>')
+    @h['auth']('teacher')
+    def kit_delete(kid):
+        owned(kid);h['execute']('DELETE FROM lesson_kits WHERE id=?',(kid,))
+        return jsonify(ok=True)
 
     @app.post('/api/lesson-kits/<int:kid>/generate/<stage>')
     @h['auth']('teacher')

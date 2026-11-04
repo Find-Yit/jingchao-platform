@@ -236,3 +236,18 @@ body.t-login-body{background:var(--t-paper)!important}
 
 /* Keep the companion launcher from covering dialog action buttons */
 body:has(#modal-root .modal) .companion-launch{opacity:0!important;pointer-events:none!important}
+
+/* ---------- Management additions (manage.js) ---------- */
+.m-class-head{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between}
+.m-rename{display:flex;gap:10px;align-items:flex-end;flex:1;min-width:240px}.m-rename .field{flex:1;margin:0}
+.m-code{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px dashed var(--t-line-2);border-radius:12px;background:var(--t-paper)}
+.m-code small{color:var(--t-muted);font-size:13px}.m-code strong{font-size:20px;letter-spacing:.12em;color:var(--t-green-2);font-variant-numeric:tabular-nums}
+.m-hint{display:flex;gap:6px;align-items:center;font-size:13px;margin:10px 0 0}
+.m-roster code,.modal code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--t-paper-2);padding:1px 6px;border-radius:6px;font-size:13.5px}
+.m-roster .m-ops{text-align:right;white-space:nowrap}.m-roster .m-ops .btn{margin-left:6px}
+.m-newpw code{font-size:22px!important;padding:6px 12px!important;letter-spacing:.06em}
+.m-danger-text{color:#b23b25!important}
+.m-kit-wrap{position:relative}.m-kit-wrap>.kit-shelf-card{width:100%}
+.m-kit-delete{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:9px;border:1px solid var(--t-line);background:#fff;color:var(--t-muted);display:grid;place-items:center;cursor:pointer;opacity:.0;transition:opacity .15s}
+.m-kit-wrap:hover .m-kit-delete,.m-kit-delete:focus-visible{opacity:1}.m-kit-delete:hover{color:#b23b25;border-color:#efc4b7}
+@media (hover:none){.m-kit-delete{opacity:1}}

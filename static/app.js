@@ -78,7 +78,7 @@ async function route(){
   if(!state.user)return;if(state.chatBusy){if(location.hash!=='#'+state.route)history.replaceState(null,'','#'+state.route);toast('请等待老师回答完成再离开');return;}if($('#modal-root .modal'))closeModal();state.taskFilter='all';disposeVisuals();const seq=++routeSequence;
   let name=location.hash.slice(1).split('?')[0]||'dashboard';
   const nav=teacher()?teacherNav:studentNav;if(!nav.some(x=>x[0]===name))name='dashboard';state.route=name;document.body.classList.toggle('world-active',name==='explore');
-  $$('.nav a').forEach(el=>el.classList.toggle('active',el.dataset.nav===(name==='lessonkit'?'lesson':name)));$('.sidebar')?.classList.remove('open');$('#crumb').textContent=nav.find(x=>x[0]===name)[2];$('#main').innerHTML=`<div class="loading">${icon('refresh','spin')}<p>正在加载…</p></div>`;
+  $$('.nav a').forEach(el=>el.classList.toggle('active',el.dataset.nav===name));$('.sidebar')?.classList.remove('open');$('#crumb').textContent=nav.find(x=>x[0]===name)[2];$('#main').innerHTML=`<div class="loading">${icon('refresh','spin')}<p>正在加载…</p></div>`;
   try{
     let html='';
     state.classes=await api('/classes');
