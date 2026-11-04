@@ -5,7 +5,7 @@ import {distance,clamp} from './meadow-math.mjs?v=6.0';
 const terrainHeight=()=>0;
 import {createMotion,stepMotion,queueJump,cameraSafeDistance,overlaps,angleDelta,damp,RUN_SPEED} from './meadow-motion.mjs?v=6.0';
 import {createExplorer} from './meadow-character.mjs?v=6.0';
-import {createAtmosphere} from './era-atmosphere.mjs?v=9.3';
+import {createAtmosphere} from './era-atmosphere.mjs?v=9.4';
 
 
 export function createEraWorld(host,options={}){
@@ -20,9 +20,10 @@ export function createEraWorld(host,options={}){
  environment.obstacles=environment.obstacles.map(o=>({...o,base:o.base??0,r:o.r??Math.hypot(o.hx||0,o.hz||0)}));
  const bound=definition.bounds||110;for(const o of [{x:bound+3,z:0,hx:3,hz:bound+6},{x:-bound-3,z:0,hx:3,hz:bound+6},{x:0,z:bound+3,hx:bound+6,hz:3},{x:0,z:-bound-3,hx:bound+6,hz:3}])environment.obstacles.push({...o,r:Math.hypot(o.hx,o.hz),base:-1,height:180});
  const restored=options.position&&Number.isFinite(options.position.x)&&Number.isFinite(options.position.z)&&Math.abs(options.position.x)<200&&Math.abs(options.position.z)<200?options.position:definition.spawn;
- let motion={...createMotion(restored),y:0},time=0,last=0,raf=0,alive=true,near=null,lastNear=null,autopath=[],destination=null,joystick={x:0,y:0},running=false,jumpHeld=false,drag=null,manualOrbitUntil=0,lastNotify=0,lastRender=0;
+ let motion={...createMotion(restored),y:Number.isFinite(restored.y)&&restored.y>0?Math.min(restored.y,60):0},time=0,last=0,raf=0,alive=true,near=null,lastNear=null,autopath=[],destination=null,joystick={x:0,y:0},running=false,jumpHeld=false,drag=null,manualOrbitUntil=0,lastNotify=0,lastRender=0;
  let yaw=.11,targetYaw=.11,pitch=.015,targetPitch=.015,zoom=13.5,targetZoom=13.5,camDistance=14,wasPaused=false;
- let petCompanion=null;
+ let petCompanion=null,lift=0;
+ const probe=new T.Vector3();
  const held=new Set(),listeners=[],resources=new Set(),npcs=[],labels=[],reducedQuery=matchMedia('(prefers-reduced-motion: reduce)');let reduced=reducedQuery.matches;
  const on=(el,event,fn,opts)=>{el.addEventListener(event,fn,opts);listeners.push(()=>el.removeEventListener(event,fn,opts));};
  function textureLabel(title,subtitle){const c=document.createElement('canvas');c.width=512;c.height=160;const ctx=c.getContext('2d');ctx.fillStyle='#fff7df';ctx.shadowColor='#354e42';ctx.shadowBlur=8;ctx.font='500 35px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';ctx.fillText(title,256,65);ctx.font='19px "PingFang SC","Microsoft YaHei",sans-serif';ctx.fillStyle='#eaf1dc';ctx.fillText(subtitle,256,103);const tex=new T.CanvasTexture(c);tex.colorSpace=T.SRGBColorSpace;resources.add(tex);const mat=new T.SpriteMaterial({map:tex,transparent:true,depthTest:true,depthWrite:false,opacity:.9});resources.add(mat);const sprite=new T.Sprite(mat);sprite.scale.set(6,1.9,1);return sprite;}
@@ -67,8 +68,13 @@ export function createEraWorld(host,options={}){
   const ground=terrainHeight(motion.x,motion.z),jumpHeight=Math.max(0,motion.y-ground);
   const x=motion.x+motion.vx*.045,z=motion.z+motion.vz*.045,y=ground+1.34+jumpHeight*.96;
   if(initial)anchor.set(x,y,z);else{anchor.x=damp(anchor.x,x,16,dt);anchor.z=damp(anchor.z,z,16,dt);anchor.y=damp(anchor.y,y,motion.grounded?10:12,dt);}
-  desired.set(anchor.x+Math.sin(yaw)*Math.cos(pitch)*zoom,anchor.y+Math.sin(pitch)*zoom+.6,anchor.z+Math.cos(yaw)*Math.cos(pitch)*zoom);
-  desired.y=Math.max(desired.y,terrainHeight(desired.x,desired.z)+.7);
+  // When roofs or stone tiers block the view, look over them first; only pull in if that fails.
+  const orbit=(target,p)=>target.set(anchor.x+Math.sin(yaw)*Math.cos(p)*zoom,Math.max(anchor.y+Math.sin(p)*zoom+.6,terrainHeight(anchor.x,anchor.z)+.7),anchor.z+Math.cos(yaw)*Math.cos(p)*zoom);
+  let wantLift=0;const clear=zoom*.72;
+  if(cameraSafeDistance(anchor,orbit(probe,pitch+lift),environment.obstacles,terrainHeight)<clear){wantLift=lift;for(const extra of [.25,.5,.75,1.0]){const p=Math.min(1.25,pitch+extra);if(cameraSafeDistance(anchor,orbit(probe,p),environment.obstacles,terrainHeight)>=clear){wantLift=p-pitch;break;}wantLift=p-pitch;}}
+  else if(lift>0&&cameraSafeDistance(anchor,orbit(probe,pitch+Math.max(0,lift-.25)),environment.obstacles,terrainHeight)>=clear)wantLift=Math.max(0,lift-.25);else wantLift=lift;
+  lift=initial?wantLift:damp(lift,wantLift,wantLift>lift?7:1.6,dt);
+  orbit(desired,pitch+lift);
   const safe=cameraSafeDistance(anchor,desired,environment.obstacles,terrainHeight);camDistance=initial?safe:damp(camDistance,safe,safe<camDistance?28:4.5,dt);
   delta.copy(desired).sub(anchor).normalize().multiplyScalar(camDistance);camera.position.copy(anchor).add(delta);camera.lookAt(anchor);
   const nextFov=damp(camera.fov,motion.speed>6?56:53,2.5,dt);if(Math.abs(nextFov-camera.fov)>.005){camera.fov=nextFov;camera.updateProjectionMatrix();}

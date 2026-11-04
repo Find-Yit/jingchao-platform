@@ -1,5 +1,5 @@
 import * as T from './vendor/three/three.module.min.js';
-import {addSurfaceDetail} from './era-atmosphere.mjs?v=9.3';
+import {addSurfaceDetail} from './era-atmosphere.mjs?v=9.4';
 
 const oldKingdom = {title:'埃及旅游与文物部 · 古王国',url:'https://egymonuments.gov.eg/historical-periods/old-kingdom/'};
 const metKingdom = {title:'大都会艺术博物馆 · 古王国的埃及',url:'https://www.metmuseum.org/essays/egypt-in-the-old-kingdom-ca-2649-2150-b-c'};
@@ -137,7 +137,7 @@ export function buildEra(scene,{quality='normal'}={}) {
     stamp(sphere,stone,[sx+side*2,1.1,sz+4.2],[1.5,.8,4.3]);solid(sx+side*2,sz+4.2,1.4,4.1,1.9);
     for(let toe=0;toe<3;toe++)stamp(sphere,warmStone,[sx+side*2+(toe-1)*.7,.93,sz+7.6],[.36,.5,.7]);
   }
-  stamp(sphere,stone,[sx,4.65,sz+2.4],[2.3,3.1,2.1]);roundSolid(sx,sz+2.4,2.4,7.5);
+  stamp(sphere,stone,[sx,4.65,sz+2.4],[2.3,3.1,2.1]);roundSolid(sx,sz+2.4,2.4,9.2);
   stamp(sphere,stone,[sx,6.85,sz+3.15],[1.2,1.6,1.12]);
   // A single bevelled nemes headdress frames the face; stripes follow its outline.
   const nemesShape=new T.Shape();nemesShape.moveTo(-1.05,1.75);nemesShape.quadraticCurveTo(0,2.1,1.05,1.75);nemesShape.lineTo(1.6,.6);nemesShape.lineTo(1.8,-.6);nemesShape.lineTo(2.3,-2.4);nemesShape.lineTo(-2.3,-2.4);nemesShape.lineTo(-1.8,-.6);nemesShape.lineTo(-1.6,.6);nemesShape.closePath();
@@ -168,7 +168,7 @@ export function buildEra(scene,{quality='normal'}={}) {
   canopyGeo.computeVertexNormals();
   const clothMat=linen.clone();own(clothMat);
   clothMat.onBeforeCompile=shader=>{shader.uniforms.egyptTime=clock;shader.vertexShader='uniform float egyptTime;\n'+shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\ntransformed.y+=sin(position.x*.7+egyptTime*.9)*sin(position.z*.4+egyptTime*.6)*.09;');};
-  mesh(canopyGeo,clothMat,[campX,4.65,campZ]);
+  mesh(canopyGeo,clothMat,[campX,4.65,campZ]);solid(campX,campZ,6.4,5.4,.5,4.2);
   for(const x of [campX-5.8,campX+5.8])stamp(box,teal,[x,4.62,campZ],[.33,.08,10.8]);
   stamp(box,wood,[campX,1.2,campZ-1.4],[6,.25,2.5]);solid(campX,campZ-1.4,3,1.25,1.35);
   for(const x of [campX-2.5,campX+2.5])for(const z of [campZ-2.3,campZ-.5])stamp(box,wood,[x,.6,z],[.2,1.2,.2]);
@@ -216,7 +216,7 @@ export function buildEra(scene,{quality='normal'}={}) {
       stamp(cylinder,wood,[xx,h*t,z],[.31*(1-t*.4),h/12+.02,.31*(1-t*.4)],[0,0,-lean/h]);
       if(i%2===0)stamp(cylinder,darkStone,[xx,h*t,z],[.335*(1-t*.4),.085,.335*(1-t*.4)]);
     }
-    roundSolid(x+lean*.45,z,.62,h);
+    roundSolid(x+lean*.45,z,.62,h);roundSolid(x+lean,z,1.3,1.9,h-.5);
     for(let j=0;j<10;j++)stamp(frondG,palmMat,[x+Math.sin(1.5)*lean,h,z],[.9+random()*.18,.85+random()*.2,.9+random()*.18],[.15+(j%2)*.17,j*Math.PI*.2,0],j%3?'#c0cf94':'#779a62');
     for(let j=0;j<4;j++)stamp(sphere,warmStone,[x+lean+(j%2-.5)*.35,h-.3,z+(Math.floor(j/2)-.5)*.35],[.2,.29,.2]);
   }

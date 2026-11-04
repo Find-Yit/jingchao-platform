@@ -1,5 +1,5 @@
 import * as T from './vendor/three/three.module.min.js';
-import {addSurfaceDetail} from './era-atmosphere.mjs?v=9.3';
+import {addSurfaceDetail} from './era-atmosphere.mjs?v=9.4';
 
 const silkSource = {title:'中国丝绸博物馆 · 九天阊阖：丝绸之路上的长安',url:'https://www.chinasilkmuseum.com/yz/info_18.aspx?itemid=31379'};
 const unescoSource = {title:'联合国教科文组织 · 长安—天山廊道的路网',url:'https://whc.unesco.org/en/list/1442/'};
@@ -54,8 +54,14 @@ export function buildEra(scene,{quality='normal'}={}) {
       for(let iz=0;iz<=nz;iz++)for(let ix=0;ix<=nx;ix++){const x=(ix/nx-.5)*w,z=(iz/nz-.5)*d;const tx=Math.max(0,(Math.abs(x)-w*.2)/(w*.3)),tz=Math.abs(z)/(d*.5),t=Math.min(1,Math.max(tx,tz));const y=h*(1-Math.pow(t,.7))+.38*Math.pow(Math.max(0,(t-.74)/.26),2);ps.push(x,y,z);uv.push(ix/nx,iz/nz);}
       for(let z=0;z<nz;z++)for(let x=0;x<nx;x++){const a=z*(nx+1)+x,b=a+1,c=a+nx+1,e=c+1;idx.push(a,c,b,b,c,e);}const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(ps,3));g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();return g;});
   }
+  // Stepped colliders under each curved roof: anyone who lands or flies over a roof
+  // rests on the tiles instead of sinking inside the roof mesh, and the camera sees the roof.
+  function roofSolids(x,y,z,w,d,h) {
+    if(w<3)return;const bands=[0,.12,.3,.5,.75,1],surface=t=>h*(1-Math.pow(t,.7))+.38*Math.pow(Math.max(0,(t-.74)/.26),2);
+    for(let i=1;i<bands.length;i++)obstacles.push({x,z,hx:w*.2+w*.3*bands[i],hz:Math.max(.35,d*.5*bands[i]),base:y-.05,height:surface(bands[i-1]*.6+bands[i]*.4)+.1,walkable:false});
+  }
   function roof(x,y,z,w,d,h=2.8,accent='roof') {
-    const rg=roofGeometry(w,d,h);add(rg,accent,[x,y,z]);
+    const rg=roofGeometry(w,d,h);add(rg,accent,[x,y,z]);roofSolids(x,y,z,w,d,h);
     box('gold',[x,y+.13,z+d/2],[w,.16,.15]);box('gold',[x,y+.13,z-d/2],[w,.16,.15]);
     box('roofLight',[x,y+h+.08,z],[w*.4,.22,.3]);
     for(const sign of [-1,1]) {
@@ -103,7 +109,7 @@ export function buildEra(scene,{quality='normal'}={}) {
       if(color==='blue'){cyl(['pink','gold','cream'][i%3],[x-1.5+i*.72,1.85,z],[.25,.5,.25],[0,0,Math.PI/2]);}
       else {cyl(i%2?'cream':'cloth',[x-1.5+i*.72,1.98,z],[.27,.58,.27]);puff('gold',[x-1.5+i*.72,2.3,z],[.16,.09,.16]);}
     }
-    lantern(x+2.2,2.85,z+1.55,.7);
+    obstacle(x,z,2.7,2.1,.4,3.35);lantern(x+2.2,2.85,z+1.55,.7);
   }
   function tree(x,z,blossom=false,s=1) {
     const h=6.6*s;cyl('wood',[x,h*.45,z],[.29*s,h*.9,.29*s]);obstacles.push({x,z,r:.4*s,base:0,height:h});
@@ -114,6 +120,7 @@ export function buildEra(scene,{quality='normal'}={}) {
       puff(tones[3],[cx+Math.cos(a)*.55*s,by+.3*s,cz+Math.sin(a)*.55*s],[1.15*s,.75*s,1.05*s]);
       puff(tones[2],[cx-Math.cos(a)*.3*s+(jit(i+9)-.5)*s,by+1.45*s,cz-Math.sin(a)*.3*s],[1.05*s,.8*s,1*s]);}
     puff(tones[2],[x,h*.95+.9*s,z],[1.45*s,1*s,1.35*s]);
+    obstacles.push({x,z,r:2.5*s,base:h*.62,height:h*.38+1.9*s,walkable:false});
     if(blossom)petals.push({x,z,h});
     cyl('stone',[x,.14,z],[1.05*s,.28,1.05*s]);
   }
@@ -140,22 +147,22 @@ export function buildEra(scene,{quality='normal'}={}) {
   for(const z of [33,-2,-48]){cyl('stoneEdge',[0,.05,z],[5.4,.05,5.4]);cyl('lightStone',[0,.085,z],[4.9,.04,4.9]);for(let i=0;i<8;i++){const a=i*Math.PI/4;box('gold',[Math.sin(a)*2.9,.116,z+Math.cos(a)*2.9],[.14,.025,2.5],[0,a,0]);}}
   // Hero city gate: an uninterrupted central passage beneath three glazed roofs.
   for(const x of [-12.5,12.5]) {
-    box('stone',[x,3.9,-24],[8,7.8,12]);obstacle(x,-24,4.1,6.1,7.8);
+    box('stone',[x,3.9,-24],[8,7.8,12]);obstacle(x,-24,4.1,6.1,8.45);
     box('lightStone',[x,.4,-24],[9,.8,13]);box('red',[x,8.15,-24],[8.1,.6,12.2]);
   }
   box('red',[0,7.8,-24],[33,1,13]);obstacle(0,-24,16.5,6.5,1,7.3);
   for(const x of [-14,-9,-4.5,0,4.5,9,14])for(const z of [-29,-19]){cyl('red',[x,10.5,z],[.34,5.2,.34]);box('gold',[x,12.6,z],[1.5,.24,1.4]);}
-  box('wall',[0,10.3,-24],[24,4.3,8]);roof(0,13,-24,36,16,4.4);
+  box('wall',[0,10.3,-24],[24,4.3,8]);obstacle(0,-24,12,4,4.85,8.15);roof(0,13,-24,36,16,4.4);
   for(const x of [-9,-4.5,0,4.5,9])for(const z of [-27,-21])cyl('red',[x,17.3,z],[.26,3.5,.26]);
-  box('red',[0,15.6,-24],[25,.5,11]);box('wall',[0,17.2,-24],[19,3.2,6]);roof(0,18.9,-24,27,12,3.3);
+  box('red',[0,15.6,-24],[25,.5,11]);obstacle(0,-24,12.5,5.5,.5,15.35);box('wall',[0,17.2,-24],[19,3.2,6]);obstacle(0,-24,9.5,3,3.3,15.6);roof(0,18.9,-24,27,12,3.3);
   roof(0,22.15,-24,14,8,2.5);plaque('长 安',0,10.3,-17.9,6.5,2.1);
   for(const x of [-14,-7,7,14])lantern(x,11.7,-16.4,1.05);
   for(const x of [-20,20])flag(x,-14,'redLight');
   // Walls frame the gate; no invisible collider closes the central passage.
   for(const sign of [-1,1]) {
-    box('wall',[sign*62,3,-24],[82,6,5]);obstacle(sign*62,-24,41,2.7,6);
+    box('wall',[sign*62,3,-24],[82,6,5]);obstacle(sign*62,-24,41,2.7,6.3);
     box('stone',[sign*62,.5,-24],[83,1,5.6]);box('lightStone',[sign*62,6.1,-24],[82,.4,5.5]);
-    for(let x=22;x<103;x+=3.1)box('wall',[sign*x,6.7,-23],[1.6,1.2,1.1]);
+    for(let x=22;x<103;x+=3.1){box('wall',[sign*x,6.7,-23],[1.6,1.2,1.1]);obstacle(sign*x,-23,.8,.55,1.2,6.1);}
     for(const z of [-16,0,18,36]){tree(sign*14.3,z,z%36===0,.85);}
     for(const z of [11,28,66]){house(sign*33,z,16,10,5.2);}
     for(const z of [10,26])stall(sign*23,z,sign<0?'pink':'blue');
@@ -171,7 +178,7 @@ export function buildEra(scene,{quality='normal'}={}) {
   // Distant brick tower gives the northern courtyard a recognisable silhouette.
   const towerX=58,towerZ=-77;
   for(let i=0;i<7;i++){const size=13-i*1.24,y=i*3.55;box('stone',[towerX,y+1.65,towerZ],[size,3.3,size]);box('lightStone',[towerX,y+3.36,towerZ],[size+1.1,.32,size+1.1]);box('dark',[towerX,y+1.8,towerZ+size/2+.025],[.85,1.6,.06]);}
-  obstacle(towerX,towerZ,7,7,26);cyl('gold',[towerX,26.1,towerZ],[.25,3,.25]);puff('gold',[towerX,27.65,towerZ],[.4,.5,.4]);
+  for(let i=0;i<7;i++){const size=13-i*1.24;obstacle(towerX,towerZ,(size+1.1)/2,(size+1.1)/2,3.52,i*3.55);}obstacles.push({x:towerX,z:towerZ,r:.45,base:24.6,height:3.5,walkable:false});cyl('gold',[towerX,26.1,towerZ],[.25,3,.25]);puff('gold',[towerX,27.65,towerZ],[.4,.5,.4]);
   // Quiet willow garden and still water outside the bustle of the avenue.
   const pondX=-58,pondZ=63;
   box('water',[pondX,-.04,pondZ],[19,.06,26]);obstacle(pondX,pondZ,9.5,13,.25,-.1);
