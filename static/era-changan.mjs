@@ -1,4 +1,5 @@
 import * as T from './vendor/three/three.module.min.js';
+import {addSurfaceDetail} from './era-atmosphere.mjs?v=9.3';
 
 const silkSource = {title:'中国丝绸博物馆 · 九天阊阖：丝绸之路上的长安',url:'https://www.chinasilkmuseum.com/yz/info_18.aspx?itemid=31379'};
 const unescoSource = {title:'联合国教科文组织 · 长安—天山廊道的路网',url:'https://whc.unesco.org/en/list/1442/'};
@@ -8,6 +9,7 @@ export const eraDefinition = {
   description:'沿着石板长街，走进灯笼摇曳的坊市，发现建筑、贸易与文化交流。原创唐风学习场景；街区比例、人物和建筑组合经过艺术化设计，并非考古复原。',
   period:'唐代 · 文化交流主题',accent:'#a7503e',sky:'#d9e8e6',fog:'#d9e4dc',sun:'#ffdab0',exposure:1.05,
   spawn:{x:0,z:43},bounds:108,
+  atmosphere:{top:'#6c9fc4',horizon:'#efdcc4',haze:'#f6d6ad',bottom:'#c9b79a',sunDir:[-.74,.44,-.5],sunColor:'#ffd8a6',sunIntensity:3.1,hemiSky:'#d3e1ea',hemiGround:'#9c8466',hemiIntensity:.95,rimColor:'#bcd6ee',rimIntensity:.5,fog:'#e9d9c4',fogNear:65,fogFar:310,cloud:.5,cloudColor:'#fff6ea',cloudShade:'#d6c6c0',sunGlow:.42},
   stations:[
     {id:'changan-gate',title:'长街与城门',teacher:'长安向导',role:'城市观察员',x:0,z:-9,color:'#b45541',intro:'先沿中轴线看看远处，再转身看看两侧。城市也有自己的组织方法。这里是唐风概念街区，并非长安城精确模型。',
       lesson:[['一座交流的城市','唐代长安是重要都城，也是东西文化交流的重要节点。不同地区的人带来了商品，也带来了故事和技艺。'],['像读地图一样读城市','先找主路，再找建筑和路口。你可以把观察到的位置记成一张简单地图，这是把现实信息整理成可读信息。']],
@@ -86,7 +88,7 @@ export function buildEra(scene,{quality='normal'}={}) {
   }
   function lantern(x,y,z,scale=1) {
     const group=new T.Group();group.position.set(x,y,z);root.add(group);lanterns.push({group,phase:x*.7+z});
-    const warm=mat('#df9b58');warm.emissive.set('#ae642c');warm.emissiveIntensity=.25;
+    const warm=mat('#e39a55');warm.emissive.set('#e0702c');warm.emissiveIntensity=.85;
     const mesh=new T.Mesh(sphereG,warm);mesh.scale.set(.46*scale,.62*scale,.46*scale);group.add(mesh);
     for(const sy of [-1,1]){const cap=new T.Mesh(cylinderG,mat('gold'));cap.scale.set(.26*scale,.13*scale,.26*scale);cap.position.y=sy*.6*scale;group.add(cap);}
     const cord=new T.Mesh(cylinderG,mat('red'));cord.scale.set(.025*scale,.42*scale,.025*scale);cord.position.y=-.86*scale;group.add(cord);
@@ -105,7 +107,13 @@ export function buildEra(scene,{quality='normal'}={}) {
   }
   function tree(x,z,blossom=false,s=1) {
     const h=6.6*s;cyl('wood',[x,h*.45,z],[.29*s,h*.9,.29*s]);obstacles.push({x,z,r:.4*s,base:0,height:h});
-    for(let i=0;i<5;i++){const a=i*2.4,r=(1+i%2*.7)*s,by=h*(.65+i%2*.07);beam([x,h*.5,z],[x+Math.cos(a)*r,by,z+Math.sin(a)*r],.14*s,'wood');puff(blossom?(i%2?'pink':'#edc3ac'):(i%2?'leaf':'leafLight'),[x+Math.cos(a)*r,by+.8*s,z+Math.sin(a)*r],[2.1*s,1.35*s,1.8*s]);}
+    // Layered crown: one main cluster per branch plus smaller outer and upper puffs.
+    const tones=blossom?['pink','#edc3ac','#f3cbc4','#d4958d']:['leaf','leafLight','#7c9776','#a7b487'],jit=k=>{const v=Math.sin(x*12.9898+z*78.233+k*37.719)*43758.5453;return v-Math.floor(v);};
+    for(let i=0;i<5;i++){const a=i*2.4+jit(i)*.5,r=(1+i%2*.7)*s,by=h*(.65+i%2*.07),cx=x+Math.cos(a)*r,cz=z+Math.sin(a)*r;beam([x,h*.5,z],[cx,by,cz],.14*s,'wood');
+      puff(tones[i%2],[cx,by+.75*s,cz],[1.75*s,1.15*s,1.55*s]);
+      puff(tones[3],[cx+Math.cos(a)*.55*s,by+.3*s,cz+Math.sin(a)*.55*s],[1.15*s,.75*s,1.05*s]);
+      puff(tones[2],[cx-Math.cos(a)*.3*s+(jit(i+9)-.5)*s,by+1.45*s,cz-Math.sin(a)*.3*s],[1.05*s,.8*s,1*s]);}
+    puff(tones[2],[x,h*.95+.9*s,z],[1.45*s,1*s,1.35*s]);
     if(blossom)petals.push({x,z,h});
     cyl('stone',[x,.14,z],[1.05*s,.28,1.05*s]);
   }
@@ -121,12 +129,14 @@ export function buildEra(scene,{quality='normal'}={}) {
   }
   // Sandy limestone base, long pale processional avenue and a tile mosaic.
   const groundG=geom('ground',()=>new T.PlaneGeometry(260,260));groundG.rotateX(-Math.PI/2);
-  const ground=new T.Mesh(groundG,mat('#bcb69b'));ground.receiveShadow=true;root.add(ground);
+  const ground=new T.Mesh(groundG,addSurfaceDetail(mat('#c3bb98'),{scale:1,strength:.2,grain:.07,tintA:'#c9d3a2',tintB:'#f3e6cc'}));
+  addSurfaceDetail(mat('lightStone'),{scale:1.6,strength:.13,grain:.05,tintA:'#fffaf0',tintB:'#efe2cc'});addSurfaceDetail(mat('stone'),{scale:1.6,strength:.14,grain:.06,tintA:'#fff6ea',tintB:'#e6d6c0'});addSurfaceDetail(mat('road'),{scale:1.2,strength:.16,grain:.06,tintA:'#fff7ea',tintB:'#e3d2b6'});addSurfaceDetail(mat('wall'),{scale:2.2,strength:.1,grain:.03,tintA:'#fff8ec',tintB:'#efdcc2'});ground.receiveShadow=true;root.add(ground);
   box('road',[0,-.005,0],[20,.05,214]);box('road',[0,.005,50],[204,.055,16]);box('road',[0,.005,-50],[194,.055,18]);
   for(const x of [-10.4,10.4])box('lightStone',[x,.04,0],[.45,.08,214]);
-  for(let z=-100;z<103;z+=3.8)for(let x=-8.1;x<9;x+=4.05) {
-    box((Math.round(z/3.8)+Math.round(x/4.05))%3?'lightStone':'stone',[x,.028,z],[3.96,.035,3.71]);
-  }
+  // Running-bond paving: smaller slabs in four weathered tones.
+  const paveTones=['lightStone','stone','#e6dac3','#d6c7ab'];for(const t of paveTones.slice(2))addSurfaceDetail(mat(t),{scale:1.6,strength:.14,grain:.06,tintA:'#fffaf0',tintB:'#eadcc4'});
+  let paveSeed=91;const paveRand=()=>{paveSeed=(paveSeed*16807)%2147483647;return paveSeed/2147483647;};
+  for(let row=0,z=-100.4;z<103;row++,z+=1.62){const offset=row%2?1.05:0;for(let x0=-10.1-offset;x0<10.1;x0+=2.1){const a=Math.max(-10.1,x0),b=Math.min(10.1,x0+2.1);if(b-a<.3)continue;const r=paveRand();box(paveTones[r<.38?0:r<.62?2:r<.84?1:3],[(a+b)/2,.028,z],[b-a-.07,.035+r*.012,1.55]);}}
   for(const z of [33,-2,-48]){cyl('stoneEdge',[0,.05,z],[5.4,.05,5.4]);cyl('lightStone',[0,.085,z],[4.9,.04,4.9]);for(let i=0;i<8;i++){const a=i*Math.PI/4;box('gold',[Math.sin(a)*2.9,.116,z+Math.cos(a)*2.9],[.14,.025,2.5],[0,a,0]);}}
   // Hero city gate: an uninterrupted central passage beneath three glazed roofs.
   for(const x of [-12.5,12.5]) {
@@ -178,8 +188,7 @@ export function buildEra(scene,{quality='normal'}={}) {
   }
   for(let i=0;i<22;i++){const x=(i%2?-1:1)*(39+(i*7)%48),z=-104+(i*13)%204;if(Math.abs(z+24)<10)continue;tree(x,z,i%3===0,.75+(i%4)*.09);}
   // Soft far hills and ivory cloud banks, outside the walkable city bounds.
-  for(let i=0;i<13;i++){const a=i*.38+3.3,x=Math.sin(a)*190,z=Math.cos(a)*190;add(coneG,i%2?'#a6b7aa':'#b8c8bc',[x,9,z],[35,30+i%3*9,31]);}
-  for(let i=0;i<9;i++){const x=-170+i*42,z=-180-(i%3)*18;for(let j=0;j<3;j++)puff('#f3ede0',[x+j*9,46+(i%3)*6+j*1.5,z],[17,4.5,7]);}
+  for(let layer=0;layer<3;layer++){const ridge=geom('ridge'+layer,()=>{const v=[],idx=[],n=120;for(let i=0;i<=n;i++){const a=i/n*Math.PI*2,r=175+layer*55,h=(16+layer*13)*(.55+.45*Math.cos(a))+Math.sin(a*6+layer*2)*6+Math.sin(a*13+layer)*3+Math.max(0,Math.sin(a*3.1+1))*8;v.push(Math.sin(a)*r,-6,Math.cos(a)*r,Math.sin(a)*r,Math.max(4,h),Math.cos(a)*r);if(i<n){const b=i*2;idx.push(b,b+1,b+2,b+1,b+3,b+2);}}const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(v,3));g.setIndex(idx);g.computeVertexNormals();return g;});const rm=mat(['#8fa69a','#a3b5ae','#b9c6c2'][layer]);rm.side=T.DoubleSide;add(ridge,rm,[0,0,0]);}
   // A small particle field gives cherry blossoms a gentle sense of wind.
   const positions=new Float32Array(120*3);for(let i=0;i<120;i++){const p=petals[i%petals.length];positions[i*3]=p.x+Math.sin(i*2.4)*4;positions[i*3+1]=1+(i*.37)%p.h;positions[i*3+2]=p.z+Math.cos(i*1.7)*4;}
   const petalGeometry=new T.BufferGeometry();petalGeometry.setAttribute('position',new T.BufferAttribute(positions,3));owned.add(petalGeometry);

@@ -5,18 +5,17 @@ import {distance,clamp} from './meadow-math.mjs?v=6.0';
 const terrainHeight=()=>0;
 import {createMotion,stepMotion,queueJump,cameraSafeDistance,overlaps,angleDelta,damp,RUN_SPEED} from './meadow-motion.mjs?v=6.0';
 import {createExplorer} from './meadow-character.mjs?v=6.0';
+import {createAtmosphere} from './era-atmosphere.mjs?v=9.3';
 
 
 export function createEraWorld(host,options={}){
- const definition=options.definition;const scene=new T.Scene();scene.background=new T.Color(definition.sky);scene.fog=new T.Fog(definition.fog||definition.sky,90,320);
+ const definition=options.definition;const scene=new T.Scene();
  const camera=new T.PerspectiveCamera(53,1,.1,750),renderer=new T.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});
  const touch=matchMedia('(pointer: coarse)').matches;let low=options.quality==='low';
  renderer.setPixelRatio(Math.min(devicePixelRatio,low?1:touch?1.35:1.7));renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=definition.exposure||1.04;
  renderer.shadowMap.enabled=!low;renderer.shadowMap.type=T.PCFSoftShadowMap;
  const canvas=renderer.domElement;canvas.setAttribute('aria-label','时空探索场景。WASD 或方向键行走，连续空格跳跃飞起，长按空格滑翔，Shift 跑步，拖动转动视角，E 与老师交流。');canvas.tabIndex=0;host.appendChild(canvas);
- const ambient=new T.HemisphereLight('#edf5fa',definition.groundLight||'#8f8b70',1.65);scene.add(ambient);
- const sun=new T.DirectionalLight(definition.sun||'#fff2d4',2.4);sun.position.set(-48,80,30);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-48,right:48,top:48,bottom:-48,near:1,far:190});sun.shadow.bias=-.0003;sun.shadow.normalBias=.035;scene.add(sun,sun.target);
- const rim=new T.DirectionalLight('#c4e5f0',.75);rim.position.set(35,20,-80);scene.add(rim);
+ const atmosphere=createAtmosphere(scene,definition);
  const environment=options.buildEra(scene,{quality:options.quality}),player=createExplorer({color:'#89b8af',accent:'#e4c986'});scene.add(player.root);
  environment.obstacles=environment.obstacles.map(o=>({...o,base:o.base??0,r:o.r??Math.hypot(o.hx||0,o.hz||0)}));
  const bound=definition.bounds||110;for(const o of [{x:bound+3,z:0,hx:3,hz:bound+6},{x:-bound-3,z:0,hx:3,hz:bound+6},{x:0,z:bound+3,hx:bound+6,hz:3},{x:0,z:-bound-3,hx:bound+6,hz:3}])environment.obstacles.push({...o,r:Math.hypot(o.hx,o.hz),base:-1,height:180});
@@ -98,7 +97,7 @@ export function createEraWorld(host,options={}){
   for(const n of npcs){const d=distance(motion,n);n.model.root.visible=d<(low?55:75);n.label.visible=d<45;n.label.material.opacity=clamp((45-d)/14,0,.95);if(n.model.root.visible){n.model.root.rotation.y=damp(n.model.root.rotation.y,n===near?Math.atan2(motion.x-n.x,motion.z-n.z):.1,3,dt);n.model.update(dt,{time,speed:0,grounded:true,wave:n===near?1:0,reducedMotion:reduced});}}
   environment.update(dt,time,motion,reduced);
   if(ms-lastNotify>140){lastNotify=ms;host.dataset.position=[motion.x,motion.y,motion.z].map(x=>x.toFixed(2)).join(',');if(petCompanion){const p=petCompanion.state;host.dataset.petPosition=[p.x,p.y,p.z].map(x=>x.toFixed(2)).join(',');host.dataset.petMode=p.mode;host.dataset.petSpecies=petCompanion.species;host.dataset.petRecalls=p.recalls;}const nearest=npcs.reduce((a,b)=>distance(motion,a)<distance(motion,b)?a:b);host.dataset.position=`${motion.x.toFixed(1)},${motion.y.toFixed(1)},${motion.z.toFixed(1)}`;host.dataset.drawCalls=String(renderer.info.render.calls);options.onMove?.({x:motion.x,z:motion.z,yaw,nearest:nearest.c.id,distance:Math.round(distance(motion,nearest)),destination,movement:!motion.grounded?(motion.vy>0?'乘风上升':jumpHeld?'滑翔':'落下'):motion.speed>6?'奔跑':motion.speed>.2?'漫步':'驻足'});}
-  if(low&&ms-lastRender<31)return;lastRender=ms;const sx=Math.round(motion.x*20)/20,sz=Math.round(motion.z*20)/20;sun.position.set(sx-48,80,sz+30);sun.target.position.set(sx,0,sz);renderer.render(scene,camera);
+  if(low&&ms-lastRender<31)return;lastRender=ms;atmosphere.update(camera,motion,time);renderer.render(scene,camera);
  }
  raf=requestAnimationFrame(frame);options.onReady?.();
  return {
@@ -109,6 +108,6 @@ export function createEraWorld(host,options={}){
   reset(){motion={...createMotion(definition.spawn),y:0};yaw=targetYaw=.11;pitch=targetPitch=.015;endAuto();clearInput();petCompanion?.reset(motion);cameraUpdate(0,true);},
   snapshot(){const ratio=renderer.getPixelRatio();try{renderer.setPixelRatio(Math.min(2,4096/Math.max(host.clientWidth,host.clientHeight)));renderer.render(scene,camera);return renderer.domElement.toDataURL('image/png');}finally{renderer.setPixelRatio(ratio);renderer.render(scene,camera);}},
   getPosition:()=>({x:motion.x,z:motion.z}),
-  dispose(){if(!alive)return;alive=false;clearTimeout(travelTimer);cancelAnimationFrame(raf);observer.disconnect();listeners.forEach(fn=>fn());petCompanion?.dispose();petCompanion=null;environment.dispose();player.dispose();npcs.forEach(n=>n.model.dispose());resources.forEach(r=>r.dispose());renderer.dispose();renderer.forceContextLoss();canvas.remove();}
+  dispose(){if(!alive)return;alive=false;clearTimeout(travelTimer);cancelAnimationFrame(raf);observer.disconnect();listeners.forEach(fn=>fn());petCompanion?.dispose();petCompanion=null;environment.dispose();atmosphere.dispose();player.dispose();npcs.forEach(n=>n.model.dispose());resources.forEach(r=>r.dispose());renderer.dispose();renderer.forceContextLoss();canvas.remove();}
  };
 }

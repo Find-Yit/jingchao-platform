@@ -1,4 +1,5 @@
 import * as T from './vendor/three/three.module.min.js';
+import {addSurfaceDetail} from './era-atmosphere.mjs?v=9.3';
 
 const oldKingdom = {title:'埃及旅游与文物部 · 古王国',url:'https://egymonuments.gov.eg/historical-periods/old-kingdom/'};
 const metKingdom = {title:'大都会艺术博物馆 · 古王国的埃及',url:'https://www.metmuseum.org/essays/egypt-in-the-old-kingdom-ca-2649-2150-b-c'};
@@ -9,6 +10,7 @@ export const eraDefinition = {
   description:'沿着石板路走向金字塔，在柱廊、书吏营地和绿洲旁寻找建造与记录的秘密。场景为古王国主题的艺术化学习复原，建筑比例、绿洲位置与人物均为教学设计。',
   period:'古埃及 · 古王国主题', accent:'#c89c57', sky:'#d9e5df', fog:'#e7d6b5', sun:'#ffe4b1', exposure:1.03,
   spawn:{x:0,z:52}, bounds:110,
+  atmosphere:{top:'#4f8fc4',horizon:'#f0dfbf',haze:'#f7e3bd',bottom:'#d8bd8c',sunDir:[-.62,.52,-.58],sunColor:'#fff0d2',sunIntensity:3.3,hemiSky:'#cddff0',hemiGround:'#d4ae78',hemiIntensity:.9,rimColor:'#ffe2b8',rimIntensity:.45,fog:'#efdcbc',fogNear:80,fogFar:380,cloud:.22,cloudColor:'#fffdf6',cloudShade:'#e2d8cc',sunGlow:.4},
   stations:[
     {id:'pyramid',title:'石层里的几何',teacher:'梅里 · 建造向导',role:'虚拟建造向导',x:0,z:4,color:'#b9925b',
       intro:'先抬头看看：宽大的底面，怎样一层层收拢成塔尖？',
@@ -72,10 +74,7 @@ export function buildEra(scene,{quality='normal'}={}) {
   }
   groundGeometry.setAttribute('color',new T.Float32BufferAttribute(gc,3));groundGeometry.computeVertexNormals();
   const groundMat=material('#ffffff',{vertexColors:true});
-  groundMat.onBeforeCompile=shader=>{
-    shader.vertexShader='varying vec3 egyptGroundPos;\n'+shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\negyptGroundPos=position;');
-    shader.fragmentShader='varying vec3 egyptGroundPos;\n'+shader.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\nfloat grains=fract(sin(dot(floor(egyptGroundPos.xz*35.0),vec2(12.9898,78.233)))*43758.5453);float ripple=sin(egyptGroundPos.x*2.6+sin(egyptGroundPos.z*.13)*2.0);diffuseColor.rgb*=.97+grains*.045+ripple*.015;');
-  };
+  addSurfaceDetail(groundMat,{scale:1,strength:.2,grain:.07,ripple:.075,tintA:'#fff3de',tintB:'#e8c08c'});
   const ground=mesh(groundGeometry,groundMat);ground.castShadow=false;ground.name='egypt-walkable-ground';
   // One instanced draw per material for thousands of stone courses.
   function pyramid(x,z,size,height,layers,capped=false) {
@@ -105,7 +104,7 @@ export function buildEra(scene,{quality='normal'}={}) {
   pyramid(-70,-64,47,32,29,true);
   pyramid(68,-74,36,24.5,24,false);
   // Fine paving seams guide the visitor without adding raised collision steps.
-  const pavement=material('#d9c8a8');
+  const pavement=addSurfaceDetail(material('#d9c8a8'),{scale:1.5,strength:.14,grain:.06,tintA:'#fff6e8',tintB:'#ead6b4'});addSurfaceDetail(stone,{scale:2.5,strength:.12,grain:.05,tintA:'#fffaf0',tintB:'#f0dcc0'});addSurfaceDetail(warmStone,{scale:2,strength:.14,grain:.06,tintA:'#fff8ec',tintB:'#ecd2ac'});
   for(let row=0;row<37;row++)for(let col=0;col<4;col++)stamp(box,pavement,[(col-1.5)*2.35,.022,52-row*1.55],[2.29,.045,1.48],[0,0,0],row%3?'#f3e6cf':'#e2cfac');
   for(let i=0;i<20;i++)stamp(box,pavement,[-7-i*1.6,.018,39-i*.08],[1.53,.036,3.2]);
   for(let i=0;i<25;i++)stamp(box,pavement,[7+i*1.55,.018,33+i*.32],[1.48,.036,3]);
@@ -139,25 +138,21 @@ export function buildEra(scene,{quality='normal'}={}) {
     for(let toe=0;toe<3;toe++)stamp(sphere,warmStone,[sx+side*2+(toe-1)*.7,.93,sz+7.6],[.36,.5,.7]);
   }
   stamp(sphere,stone,[sx,4.65,sz+2.4],[2.3,3.1,2.1]);roundSolid(sx,sz+2.4,2.4,7.5);
-  stamp(sphere,paleStone,[sx,6.9,sz+3.0],[1.55,1.85,1.35]);
-  // Headdress flares are bevelled custom geometry, not a flat face decal.
-  function headcloth(sign) {
-    const shape=new T.Shape();shape.moveTo(.5,1.5);shape.lineTo(1.65,1.1);shape.lineTo(2.25,-2);shape.quadraticCurveTo(1.5,-2.5,.8,-1.7);shape.closePath();
-    const g=geo(new T.ExtrudeGeometry(shape,{depth:.6,bevelEnabled:true,bevelSize:.18,bevelThickness:.18,bevelSegments:2,steps:1,curveSegments:8}));
-    const m=mesh(g,warmStone,[sx,7,sz+2.2]);m.scale.x=sign;
-    for(let j=0;j<10;j++)stamp(box,darkStone,[sx+sign*(1.14+j*.07),7.65-j*.32,sz+3.05],[.95,.07,.045],[0,0,sign*-.14]);
-  }
-  headcloth(-1);headcloth(1);
-  stamp(sphere,warmStone,[sx,8.1,sz+2.65],[1.65,.95,1.4]);
+  stamp(sphere,stone,[sx,6.85,sz+3.15],[1.2,1.6,1.12]);
+  // A single bevelled nemes headdress frames the face; stripes follow its outline.
+  const nemesShape=new T.Shape();nemesShape.moveTo(-1.05,1.75);nemesShape.quadraticCurveTo(0,2.1,1.05,1.75);nemesShape.lineTo(1.6,.6);nemesShape.lineTo(1.8,-.6);nemesShape.lineTo(2.3,-2.4);nemesShape.lineTo(-2.3,-2.4);nemesShape.lineTo(-1.8,-.6);nemesShape.lineTo(-1.6,.6);nemesShape.closePath();
+  mesh(geo(new T.ExtrudeGeometry(nemesShape,{depth:1.9,bevelEnabled:true,bevelSize:.16,bevelThickness:.15,bevelSegments:3,steps:1,curveSegments:10})),warmStone,[sx,7,sz+1.55]);
+  const nemesHalf=ly=>ly>.6?1.05+.55*(1.75-ly)/1.15:ly>-.6?1.6+.2*(.6-ly)/1.2:1.8+.5*(-.6-ly)/1.8;
+  for(let ly=1.62;ly>-2.35;ly-=.29){const w=nemesHalf(ly)+.1;if(ly>1.42)stamp(box,darkStone,[sx,7+ly,sz+3.63],[2*w-.15,.075,.04]);else{const inner=1.18,width=w-inner-.06;if(width>.12)for(const side of [-1,1])stamp(box,darkStone,[sx+side*(inner+w)/2,7+ly,sz+3.63],[width,.075,.04]);}}
   for(const side of [-1,1]) {
-    stamp(sphere,darkStone,[sx+side*.59,7.14,sz+4.12],[.33,.09,.06]);
-    stamp(sphere,stone,[sx+side*1.51,6.84,sz+3.01],[.23,.55,.3]);
-    stamp(box,warmStone,[sx+side*.58,7.36,sz+4.05],[.76,.16,.12],[0,0,side*-.07]);
+    stamp(sphere,darkStone,[sx+side*.46,7.12,sz+4.08],[.26,.07,.06],[0,0,side*.08]);
+    stamp(box,warmStone,[sx+side*.46,7.36,sz+4.0],[.58,.08,.1],[0,0,side*-.1]);
   }
-  stamp(sphere,warmStone,[sx,6.84,sz+4.21],[.28,.57,.35]);
-  stamp(sphere,darkStone,[sx,6.17,sz+4.12],[.46,.055,.055]);
-  stamp(sphere,stone,[sx,6,sz+4.04],[.43,.17,.15]);
-  stamp(box,warmStone,[sx,5.37,sz+3.92],[.44,.85,.4],[.12,0,0]);
+  stamp(sphere,stone,[sx,6.72,sz+4.2],[.15,.27,.2]);
+  stamp(sphere,darkStone,[sx,6.24,sz+4.17],[.32,.04,.05]);
+  stamp(sphere,stone,[sx,6.08,sz+4.1],[.3,.11,.12]);
+  stamp(box,warmStone,[sx,5.15,sz+3.75],[.42,.9,.4],[.12,0,0]);
+  stamp(cylinder,paleStone,[sx,8.55,sz+3.7],[.11,.45,.11],[.25,0,0]);
   // Low rope markers leave the main walkway open.
   for(const x of [-8.2,8.2])for(const z of [0,11,22,33]) {
     stamp(cylinder,wood,[x,.7,z],[.13,1.4,.13]);roundSolid(x,z,.16,1.4);
@@ -239,6 +234,12 @@ export function buildEra(scene,{quality='normal'}={}) {
     const s=.3+random()*1.0;
     stamp(rockG,warmStone,[x,s*.35,z],[s*1.2,s*.65,s],[.1,random()*6,.1]);roundSolid(x,z,s*1.3,s*1.1);
   }
+  // Sparse dry scrub and loose pebbles break up the open sand (decorative, no colliders).
+  const scrubG=geo(new T.BufferGeometry());{const v=[],idx=[];for(let i=0;i<7;i++){const a=i/7*Math.PI*2+i*.9,lean=.22+(i%3)*.12,h=.38+(i%4)*.12,cx=Math.cos(a),cz=Math.sin(a),b=v.length/3;v.push(-cz*.04,0,cx*.04,cz*.04,0,-cx*.04,cx*lean,h,cz*lean);idx.push(b,b+1,b+2);}scrubG.setAttribute('position',new T.Float32BufferAttribute(v,3));scrubG.setIndex(idx);scrubG.computeVertexNormals();}
+  const scrubMat=wind(material('#c2ab72',{side:T.DoubleSide}),.05);
+  const openSand=(x,z,pad)=>!(Math.abs(x)<6+pad&&z>-8&&z<56)&&!eraDefinition.stations.some(s=>Math.hypot(s.x-x,s.z-z)<4+pad)&&Math.hypot(x-ox,(z-oz)*1.4)>14&&!(x<-23&&x>-63&&z>2&&z<64&&pad>0)&&!(z<-6&&Math.abs(x)<42)&&!(x>20&&x<39&&z>3&&z<30);
+  for(let i=0;i<1100;i++){const x=(random()-.5)*215,z=(random()-.5)*205+8;if(!openSand(x,z,1))continue;const s=.7+random()*.9;stamp(scrubG,scrubMat,[x,0,z],[s,s*(.7+random()*.6),s],[0,random()*6.28,0],['#ffffff','#e8dcc0','#d6d0a6','#f2e2c6'][i%4]);}
+  for(let i=0;i<900;i++){const x=(random()-.5)*220,z=(random()-.5)*210+8;if(!openSand(x,z,0))continue;const s=.06+random()*.2;stamp(rockG,warmStone,[x,s*.25,z],[s*1.3,s*.6,s],[random(),random()*6,random()],['#ffffff','#efe0c6','#d8c3a0'][i%3]);}
   // Low distant mastabas add a plausible Old Kingdom silhouette, not later temples.
   for(const [x,z,w,d] of [[-89,13,13,8],[-85,42,9,6],[82,-17,12,7],[93,17,8,6],[-51,-93,15,10]]) {
     stamp(box,warmStone,[x,2.1,z],[w,4.2,d]);solid(x,z,w/2,d/2,4.2);
