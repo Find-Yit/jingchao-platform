@@ -77,3 +77,32 @@ test('动画更新、减少动态效果与释放资源都安全',()=>{
   }
   const one=buildEra(scene),two=buildEra(scene);one.dispose();assert.equal(scene.children.length,1,'另一个场景实例不受影响');two.dispose();
 });
+
+test('小分块合并：静态网格数量（≈绘制次数）保持在预算内，远山与云各只占一个网格',()=>{
+  const scene=new T.Scene(),world=buildEra(scene,{quality:'high'});
+  const s=stats(scene);assert.ok(s.meshes<=130,`${s.meshes} meshes：小分块应合并，避免绘制次数回升`);
+  let basic=0;scene.traverse(o=>{if(o.isMesh&&o.material.isMeshBasicMaterial&&o.material.vertexColors&&!o.material.fog)basic++;});
+  assert.equal(basic,1,'远山应合成一个无雾网格');
+  world.dispose();
+});
+
+test('场景只临时调整雾距，释放后还原',()=>{
+  const scene=new T.Scene();scene.fog=new T.Fog('#ffffff',90,320);
+  const world=buildEra(scene);assert.ok(scene.fog.far>=400&&scene.fog.near>=90,'航拍时城市不应被雾洗白');
+  world.dispose();assert.deepEqual([scene.fog.near,scene.fog.far],[90,320]);
+});
+
+test('新增的亭子、伞、骆驼等：从空中落下会站在与外形相符的高度上',async()=>{
+  const {createMotion,stepMotion}=await import('../static/meadow-motion.mjs');
+  const scene=new T.Scene(),world=buildEra(scene);
+  const obstacles=world.obstacles.map(o=>({...o,base:o.base??0,r:o.r??Math.hypot(o.hx||0,o.hz||0)}));
+  const drop=(x,z,y=12)=>{const m={...createMotion({x,z}),y,grounded:false};for(let i=0;i<900;i++)stepMotion(m,{x:0,z:0},1/60,obstacles,()=>0);assert.ok(m.grounded,`(${x},${z}) 应当落稳`);return m.y;};
+  const near=(v,a,b,name)=>assert.ok(v>=a&&v<=b,`${name}: 落在 ${v.toFixed(2)}，应在 ${a}–${b}`);
+  near(drop(-10.2,38.55),3.2,3.8,'街鼓亭屋脊');
+  near(drop(-18,34.8),4.6,5.4,'西市鼓亭宝顶');
+  near(drop(-42,18),4.9,5.6,'井亭宝顶（不应站在宝顶上方的空气里）');
+  near(drop(11.1,38.0),2.3,2.9,'胡饼摊的伞顶');
+  near(drop(27.5,8.5),1.3,1.9,'卧驼背上');
+  near(drop(-37.4,-45),6.4,6.9,'起重架桅杆顶');
+  world.dispose();
+});

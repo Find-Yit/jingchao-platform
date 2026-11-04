@@ -6,7 +6,7 @@ const buildingSource = {title:'旧金山亚洲艺术博物馆 · 大雁塔与中
 export const eraDefinition = {
   id:'changan',title:'盛唐长安',subtitle:'穿过朱红城门，听见远方的回声',
   description:'沿着石板长街，走进灯笼摇曳的坊市，发现建筑、贸易与文化交流。原创唐风学习场景；街区比例、人物和建筑组合经过艺术化设计，并非考古复原。',
-  period:'唐代 · 文化交流主题',accent:'#a7503e',sky:'#dfe9e6',fog:'#e2e6dc',sun:'#ffe2bd',groundLight:'#a39878',exposure:1.02,
+  period:'唐代 · 文化交流主题',accent:'#a7503e',sky:'#a8cbe0',fog:'#ebe1cb',sun:'#ffe1b8',groundLight:'#857559',exposure:1.05,
   spawn:{x:0,z:43},bounds:108,
   stations:[
     {id:'changan-gate',title:'长街与城门',teacher:'长安向导',role:'城市观察员',x:0,z:-9,color:'#b45541',intro:'先沿中轴线看看远处，再转身看看两侧。城市也有自己的组织方法。这里是唐风概念街区，并非长安城精确模型。',
@@ -38,6 +38,8 @@ export function buildEra(scene,{quality='normal'}={}) {
   const owned=new Set(),obstacles=[],buckets=new Map(),footprints=[],paint=[];
   const hasDOM=typeof document!=='undefined'&&typeof document.createElement==='function';
   let low=quality==='low',alive=true;
+  // 雾：城内清透、远处才起薄雾（只改本场景的雾距，释放时还原）
+  const fog=scene.fog&&scene.fog.isFog?scene.fog:null,fog0=fog&&[fog.near,fog.far];if(fog){fog.near=105;fog.far=500;}
   const timeU={value:0},rand=seeded(618);
   const R=(a=0,b=1)=>a+(b-a)*rand(),pick=a=>a[Math.floor(rand()*a.length)];
   const own=r=>(owned.add(r),r);
@@ -55,8 +57,8 @@ export function buildEra(scene,{quality='normal'}={}) {
   function bucketFor(kind,x,z,lod){
     const far=Math.abs(x)>HALF+12||Math.abs(z)>HALF+12;
     const cx=far?'f':clamp(Math.floor((x+HALF)/CHUNK),0,Math.ceil(2*HALF/CHUNK)-1),cz=far?'f':clamp(Math.floor((z+HALF)/CHUNK),0,Math.ceil(2*HALF/CHUNK)-1);
-    const key=`${kind}|${cx},${cz}|${far?'c':lod}`;
-    if(!buckets.has(key))buckets.set(key,{...newAcc(kind),far,lod:far?'c':lod,cx,cz});
+    const key=`${kind}|${cx},${cz}|${lod}`;
+    if(!buckets.has(key))buckets.set(key,{...newAcc(kind),far,lod,cx,cz});
     return buckets.get(key);
   }
   // 把模板几何体 g 以局部矩阵 lm（再乘当前框架 F）写入缓冲
@@ -177,7 +179,7 @@ export function buildEra(scene,{quality='normal'}={}) {
       for(let j=0;j<N;j++){const y0=h*j/N,y1=h*(j+1)/N,t=1-Math.pow(y0/h,1/1.45),Z=hd*t;
         const X=style==='gable'?hw:style==='pyr'?hw*t:style==='hip'?a+(hw-a)*t:(t<tS?xg:xg+(t-tS)/(1-tS)*(hw-xg));
         const top=y+(y0+y1)/2+.06,base=j?y+y0-.15:y-th-.05;if(X>.05&&Z>.05)block(x,z,X,Z,top-base,base,{walkable:true});}
-      if(ridgeHalf>0)block(x,z,ridgeHalf+.1,rw*.7,rw*1.1+.25,y+h-.25,{walkable:true});else if(style==='pyr')pillar(x,z,.3,h+.9,y+h-.3);}
+      if(ridgeHalf>0)block(x,z,ridgeHalf+.1,rw*.7,rw*1.1+.25,y+h-.25,{walkable:true});else if(style==='pyr')pillar(x,z,.3,1.27,y+h-.3);}
     if(style!=='gable'&&o.corners!==false)for(const sx of [-1,1])for(const sz of [-1,1])box('solid',[x+sx*(hw-.1),y+Y(hw,hd)+.12,z+sz*(hd-.1)],[.16,.3,.16],ridge,[sz*.5,0,-sx*.5],{ao:false,lod:'d'});
     return S;
   }
@@ -343,13 +345,42 @@ export function buildEra(scene,{quality='normal'}={}) {
     merchant:{body:bake([[G.trunk,[0,.7,0],[.3,1.26,.27],W],[G.ball,[0,1.36,0],[.26,.16,.21],W],...sleeves(1.06,.56),[G.cyl,[0,1.0,0],[.21,.08,.2],'#5a3a2c'],[G.box,[-.09,.05,.07],[.12,.1,.26],'#3a3330'],[G.box,[.09,.05,.07],[.12,.1,.26],'#3a3330']]),
       head:bake([[G.cyl,[0,1.47,0],[.07,.12,.07],SK],[G.ball,[0,1.6,0],[.145,.165,.15],'#d9b28c'],[G.ball,[0,1.52,.08],[.11,.1,.08],'#4a3328'],[G.cone,[0,1.86,-.01],[.16,.4,.16],'#e6d8bb'],[G.cyl,[0,1.69,-.01],[.17,.06,.17],'#a35a42'],...hands(.8)])}};
   const ROBES=['#c98b5e','#7fa1a0','#d7c6a0','#b9655a','#8a9bb4','#e0b07c','#9db38c','#c57f86','#efe2c8','#6d8a87','#a9845f','#c7a2b8'];
-  function person(x,z,rot,type='man',color,lod='d'){const t=PEOPLE[type],m=mtx([x,0,z],[1,1,1],[0,rot,0]);put('solid',t.body,m,color||pick(ROBES),{lod,ao:false});put('solid',t.head,m,'#ffffff',{lod,ao:false});}
-  // 骆驼（双峰驼，驮丝绸）；腿单独实例化以摆动
-  const camelBody=bake([[G.ball2,[0,1.72,0],[.55,.6,1.15],'#c9a273'],[G.ball,[0,2.22,.45],[.33,.44,.36],'#b88f60'],[G.ball,[0,2.22,-.45],[.33,.44,.36],'#b88f60'],
-    [segM([0,1.75,.95],[0,1.5,1.5],.22),G.cyl,'#c39a6b'],[segM([0,1.5,1.5],[0,2.3,1.85],.18),G.cyl,'#c39a6b'],[G.ball,[0,1.62,1.45],[.2,.3,.24],'#a57f57'],
-    [G.ball,[0,2.36,2.05],[.16,.17,.34],'#c39a6b'],[G.box,[-.1,2.5,1.92],[.05,.12,.06],'#a57f57'],[G.box,[.1,2.5,1.92],[.05,.12,.06],'#a57f57'],[segM([0,1.85,-1.1],[0,1.25,-1.28],.05),G.cyl,'#8f6d4c'],
-    [G.box,[0,2.02,0],[1.22,.08,1.0],'#a2584a'],[G.box,[0,1.75,0],[1.24,.5,.06],'#e1c27c'],[G.cyl,[-.66,1.86,0],[.24,.95,.24],'#d98f86',[Math.PI/2,0,0]],[G.cyl,[.66,1.86,0],[.24,.95,.24],'#7fa9a6',[Math.PI/2,0,0]],[G.box,[0,2.3,0],[.62,.28,.36],'#e7cf8f']].map(p=>p[0].isMatrix4?[p[1],p[0],p[2]]:p));
-  const camelLeg=bake([[G.trunk,[0,-.68,0],[.13,1.36,.13],'#b68e62',[Math.PI,0,0]],[G.ball,[0,-1.4,.04],[.15,.07,.19],'#8f6d4c']]);
+  function person(x,z,rot,type='man',color,lod='d',y=0,k=1){const t=PEOPLE[type],m=mtx([x,y,z],[k,k,k],[0,rot,0]);put('solid',t.body,m,color||pick(ROBES),{lod,ao:false});put('solid',t.head,m,'#ffffff',{lod,ao:false});}
+  // 双峰驼：圆桶身、驼峰带毛、S 形颈与颈下长毛，驮丝绸卷与货包；腿单独实例化以摆动
+  const sg=(g,a,b,w,c)=>[g,segM(a,b,w),c],CAM='#c9a273',CAMD='#b88f60',CAMH='#9c774f';
+  const camelHead=(y,z)=>[sg(G.trunk,[0,y-.08,z-.18],[0,y,z+.12],.2,'#c39a6b'),[G.ball,[0,y+.02,z],[.15,.15,.28],'#c39a6b',[.22,0,0]],[G.ball,[0,y-.07,z+.24],[.11,.1,.12],'#b08a5f'],
+    [G.box,[-.09,y+.13,z-.1],[.04,.1,.05],CAMD],[G.box,[.09,y+.13,z-.1],[.04,.1,.05],CAMD],[G.ball,[-.12,y+.06,z+.06],[.025,.025,.025],INK],[G.ball,[.12,y+.06,z+.06],[.025,.025,.025],INK]];
+  const camelBody=bake([[G.ball2,[0,1.74,0],[.52,.5,1.0],CAM],[G.ball,[0,1.55,0],[.44,.34,.78],'#c09868'],[G.ball,[0,1.86,.6],[.42,.46,.42],'#c39a6b'],[G.ball,[0,1.82,-.68],[.42,.44,.4],CAM],
+    [G.ball,[0,2.28,.4],[.29,.4,.31],CAMD],[G.ball,[0,2.6,.42],[.18,.12,.2],CAMH],[G.ball,[0,2.26,-.42],[.29,.4,.31],CAMD],[G.ball,[0,2.58,-.42],[.18,.12,.2],CAMH],
+    sg(G.trunk,[0,1.9,.9],[0,1.44,1.48],.3,'#c39a6b'),[G.ball,[0,1.44,1.5],[.17,.17,.19],'#c39a6b'],sg(G.trunk,[0,1.44,1.5],[0,2.16,1.76],.21,'#c39a6b'),[G.ball,[0,1.42,1.24],[.17,.3,.3],CAMH],[G.ball,[0,1.94,1.66],[.15,.2,.14],CAMH],
+    ...camelHead(2.24,1.92),sg(G.cyl,[0,1.98,-1.06],[0,1.36,-1.2],.05,'#8f6d4c'),[G.ball,[0,1.3,-1.21],[.07,.11,.07],'#6d5440'],
+    [G.box,[0,2.25,0],[.98,.06,.5],'#a2584a'],[G.box,[-.5,2.0,0],[.05,.5,.5],'#a2584a'],[G.box,[.5,2.0,0],[.05,.5,.5],'#a2584a'],[G.box,[-.53,1.78,0],[.06,.08,.52],'#e1c27c'],[G.box,[.53,1.78,0],[.06,.08,.52],'#e1c27c'],
+    [G.cyl,[-.72,2.02,0],[.2,.86,.2],'#d98f86',[Math.PI/2,0,0]],[G.cyl,[.72,2.02,0],[.2,.86,.2],'#7fa9a6',[Math.PI/2,0,0]],[G.cyl,[-.72,2.02,0],[.205,.08,.205],'#f0e3cf',[Math.PI/2,0,0]],[G.cyl,[.72,2.02,0],[.205,.08,.205],'#f0e3cf',[Math.PI/2,0,0]],
+    [G.box,[0,2.4,0],[.72,.22,.3],'#e7cf8f'],[G.ball,[.42,1.62,.46],[.11,.14,.05],'#d6c7a6']]);
+  const camelLeg=bake([sg(G.trunk,[0,.06,0],[0,-.74,.02],.17,'#b68e62'),[G.ball,[0,-.76,.02],[.085,.09,.09],'#ad8659'],sg(G.cyl,[0,-.76,.02],[0,-1.36,0],.066,'#b68e62'),[G.ball,[0,-1.41,.06],[.13,.055,.17],'#8f6d4c']]);
+  const camelRest=bake([[G.ball2,[0,.64,0],[.56,.5,1.0],CAM],[G.ball,[0,.76,.56],[.42,.42,.4],'#c39a6b'],[G.ball,[0,.72,-.6],[.42,.42,.4],CAM],[G.ball,[0,1.16,.36],[.28,.38,.3],CAMD],[G.ball,[0,1.46,.38],[.17,.11,.19],CAMH],[G.ball,[0,1.14,-.4],[.28,.38,.3],CAMD],[G.ball,[0,1.44,-.4],[.17,.11,.19],CAMH],
+    sg(G.cyl,[-.24,.1,.95],[-.24,.1,.5],.09,'#b68e62'),sg(G.cyl,[.24,.1,.95],[.24,.1,.5],.09,'#b68e62'),[G.ball,[-.24,.13,.98],[.12,.1,.12],'#a57f57'],[G.ball,[.24,.13,.98],[.12,.1,.12],'#a57f57'],
+    [G.ball,[-.4,.42,-.45],[.17,.24,.42],'#bf9668'],[G.ball,[.4,.42,-.45],[.17,.24,.42],'#bf9668'],[G.ball,[-.5,.07,-.08],[.11,.06,.18],'#8f6d4c'],[G.ball,[.5,.07,-.08],[.11,.06,.18],'#8f6d4c'],
+    sg(G.trunk,[0,.84,.86],[0,.96,1.32],.28,'#c39a6b'),[G.ball,[0,.96,1.34],[.16,.16,.18],'#c39a6b'],sg(G.trunk,[0,.96,1.34],[0,1.7,1.56],.2,'#c39a6b'),[G.ball,[0,.92,1.12],[.16,.24,.26],CAMH],...camelHead(1.8,1.72),
+    sg(G.cyl,[0,.86,-1.0],[0,.36,-1.1],.045,'#8f6d4c'),[G.box,[0,1.1,0],[.98,.06,.5],'#a2584a'],[G.box,[-.5,.86,0],[.05,.5,.5],'#a2584a'],[G.box,[.5,.86,0],[.05,.5,.5],'#a2584a']]);
+  // 唐马：短颈小头、剪鬃“三花”、结尾，鞍鞯与杏叶；rider 为真时不含马腿（马腿另做实例以便摆动），改为带骑者的腿与靴
+  function horseParts(c,dark,cloth,rider){const L='#3b302b',legs=[];
+    if(!rider)for(const sx of [-1,1]){legs.push(sg(G.trunk,[sx*.15,1.06,.5],[sx*.15,.56,.54],.13,c),sg(G.cyl,[sx*.15,.56,.54],[sx*.15,.08,.5],.062,c),[G.box,[sx*.15,.04,.52],[.1,.08,.13],L],
+      sg(G.trunk,[sx*.16,1.14,-.52],[sx*.16,.6,-.68],.15,c),sg(G.cyl,[sx*.16,.6,-.68],[sx*.16,.08,-.58],.062,c),[G.box,[sx*.16,.04,-.58],[.1,.08,.13],L]);}
+    const p=[[G.ball2,[0,1.24,0],[.34,.36,.72],c],[G.ball,[0,1.3,.5],[.33,.39,.36],c],[G.ball,[0,1.32,-.5],[.35,.38,.38],c],sg(G.trunk,[0,1.42,.64],[0,1.98,.96],.25,c),[G.ball,[0,1.97,.99],[.13,.14,.15],c],
+      sg(G.trunk,[0,2.0,1.0],[0,1.62,1.32],.16,c),[G.ball,[0,1.6,1.34],[.09,.09,.1],dark],[G.cone,[-.06,2.12,.97],[.035,.12,.035],c],[G.cone,[.06,2.12,.97],[.035,.12,.035],c],
+      sg(G.box,[0,1.62,.6],[0,2.08,.92],.07,dark),[G.box,[0,1.74,.71],[.06,.12,.07],dark],[G.box,[0,1.86,.8],[.06,.12,.07],dark],[G.box,[0,1.98,.89],[.06,.12,.07],dark],
+      [G.ball,[0,1.4,-.88],[.06,.07,.07],dark],sg(G.trunk,[0,1.38,-.9],[0,.98,-.98],.055,dark),[G.ball,[0,.98,-.98],[.05,.06,.05],dark],
+      [G.box,[0,1.6,.04],[.74,.05,.64],cloth],[G.box,[-.36,1.36,.04],[.04,.48,.6],cloth],[G.box,[.36,1.36,.04],[.04,.48,.6],cloth],[G.box,[0,1.66,.04],[.42,.1,.46],'#6b3f30'],[G.box,[0,1.75,.27],[.3,.12,.06],'#6b3f30'],[G.box,[0,1.75,-.19],[.32,.14,.06],'#6b3f30'],
+      [G.box,[0,1.4,.82],[.5,.05,.05],'#a2584a'],[G.ball,[-.18,1.3,.84],[.05,.07,.04],'#b5533e'],[G.ball,[0,1.3,.87],[.05,.07,.04],'#b5533e'],[G.ball,[.18,1.3,.84],[.05,.07,.04],'#b5533e'],[G.box,[0,1.4,-.72],[.5,.05,.05],'#a2584a'],
+      sg(G.cyl,[0,1.66,1.28],[0,1.74,.36],.02,L),...legs];
+    if(rider)for(const sx of [-1,1])p.push(sg(G.cyl,[sx*.34,1.64,.08],[sx*.37,1.12,.2],.085,'#efe2c8'),[G.box,[sx*.37,1.06,.24],[.11,.12,.22],'#3a3330']);
+    return p;}
+  const horseLeg=bake([sg(G.trunk,[0,.06,0],[0,-.5,.03],.12,'#8d6a52'),[G.ball,[0,-.52,.03],[.065,.075,.07],'#84634c'],sg(G.cyl,[0,-.52,.03],[0,-.96,0],.052,'#8d6a52'),[G.ball,[0,-.96,.01],[.06,.05,.06],'#6d5444'],[G.box,[0,-1.02,.02],[.1,.08,.12],'#3b302b']]);
+  const horseG=[bake(horseParts('#8d6a52','#4a3a30','#c9923f')),bake(horseParts('#ddd3c2','#8b8279','#5f8a86'))],riderHorse=bake(horseParts('#8d6a52','#4a3a30','#b5533e',true));
+  // 挑担的人身上的扁担与两只箩筐（跟随“男子”实例移动）
+  const porterLoad=bake([sg(G.cyl,[.2,1.42,-.95],[.2,1.42,.95],.035,'#9a7a52'),[G.ball,[.24,1.36,.12],[.06,.06,.06],SK],sg(G.cyl,[.25,.92,.12],[.24,1.34,.12],.05,W),
+    ...[-.9,.9].flatMap(z=>[sg(G.cyl,[.2,1.4,z],[.2,.72,z],.012,'#6d5a44'),[G.cyl,[.2,.5,z],[.28,.42,.28],'#b39a6e'],[G.cyl,[.2,.72,z],[.3,.05,.3],'#9a7f58'],[G.dome,[.2,.7,z],[.25,.16,.25],z>0?'#c9823e':'#7c9a5a']])]);
   const oxCart=bake([[G.ball2,[0,1.05,1.7],[.46,.5,.9],'#8d7a66'],[G.ball,[0,1.38,1.25],[.3,.28,.36],'#7f6d5b'],[G.ball,[0,1.05,2.62],[.21,.23,.32],'#7d6a58'],[G.cone,[-.2,1.32,2.55],[.05,.3,.05],'#e7dcc4',[0,0,.7]],[G.cone,[.2,1.32,2.55],[.05,.3,.05],'#e7dcc4',[0,0,-.7]],
     ...[[-.25,1.15],[.25,1.15],[-.25,2.25],[.25,2.25]].map(([lx,lz])=>[G.cyl,[lx,.42,lz],[.09,.85,.09],'#6f5f50']),
     [G.box,[-.45,1.0,.75],[.06,.06,2.3],P.woodDark],[G.box,[.45,1.0,.75],[.06,.06,2.3],P.woodDark],[G.box,[0,1.25,1.95],[1.1,.08,.08],P.woodDark],
@@ -443,17 +474,13 @@ export function buildEra(scene,{quality='normal'}={}) {
   goods(15.4,5.6,'bales');goods(15.6,-.2+3,'jars');goods(34,6,'bales');goods(37,25,'jars');
   frame(15.5,10.5,Math.PI/2,()=>{box('solid',[0,.4,0],[1.6,.8,.9],P.wood);for(let i=0;i<3;i++)put('solid',G.cyl,mtx([-.5+i*.5,.86,0],[.06,.7,.06],[Math.PI/2,0,0]),'#efe6cf',{lod:'d'});box('solid',[.2,.82,.1],[.5,.02,.4],P.white,0,{lod:'d'});block(0,0,.85,.5,.9);});
   person(14.4,10.5,Math.PI/2,'man','#6d8a87');person(16.8,8.6,-Math.PI/2,'merchant','#a35a42');
-  function camelKneel(x,z,rot){frame(x,z,rot,()=>{ball('solid',[0,.8,0],[.58,.46,1.05],'#c9a273');ball('solid',[0,1.28,.4],[.3,.36,.32],'#b88f60');ball('solid',[0,1.28,-.4],[.3,.36,.32],'#b88f60');
-    beam('solid',[0,.85,.85],[0,1.25,1.25],.24,'#c39a6b');beam('solid',[0,1.2,1.2],[0,2.0,1.38],.19,'#c39a6b');ball('solid',[0,1.25,1.18],[.2,.28,.22],'#a57f57');ball('solid',[0,2.08,1.55],[.14,.15,.3],'#c39a6b');for(const sx of [-1,1])box('solid',[sx*.42,.22,.2],[.24,.3,1.5],'#b68e62');
-    box('solid',[0,1.15,0],[1.15,.07,.95],'#a2584a');pillar(0,0,1.3,1.8);});}
+  function camelKneel(x,z,rot){frame(x,z,rot,()=>{put('solid',camelRest,mtx([0,0,0]),'#ffffff');block(0,0,.62,1.2,1.66);block(0,1.42,.2,.36,2.12);});}
   camelKneel(27.5,8.5,.7);camelKneel(30.5,15,2.5);camelKneel(33,9,-.4);
   for(const [x,z,r] of [[27,20,3.2],[24.5,2.8,.2]])person(x,z,r,'merchant',pick(['#8a6f9a','#a35a42','#6d8a87']));
   // 驿马与拴马桩、帐篷、更多货物
-  function horse(x,z,rot,col){frame(x,z,rot,()=>{ball('solid',[0,1.32,0],[.34,.4,.95],col);beam('solid',[0,1.45,.68],[0,1.95,1.02],.24,col);put('solid',G.ball,mtx([0,1.86,1.26],[.12,.14,.32],[.75,0,0]),col);beam('solid',[0,1.55,.66],[0,2.02,.98],.07,'#3b302b');
-    for(const [lx,lz] of [[-.18,.62],[.18,.62],[-.18,-.62],[.18,-.62]])cyl('solid',[lx,.52,lz],[.075,1.04,.075],col);beam('solid',[0,1.5,-.88],[0,.85,-1.08],.09,'#3b302b');
-    box('solid',[0,1.62,.02],[.8,.42,.66],'#c9923f');box('solid',[0,1.82,.02],[.46,.14,.56],'#a2584a');pillar(0,0,.8,1.95);});}
+  function horse(x,z,rot,v){frame(x,z,rot,()=>{put('solid',horseG[v],mtx([0,0,0]),'#ffffff');block(0,0,.4,.95,1.8);block(0,1.12,.15,.3,2.2);});}
   for(const sz of [14.8,20.8])cyl('solid',[15,.6,sz],[.1,1.2,.1],P.woodDark);beam('solid',[15,1.05,14.8],[15,1.05,20.8],.06,P.woodDark);pillar(15,17.8,.3,1.2);
-  horse(16.3,16.2,-Math.PI/2+.15,'#8d6a52');horse(16.4,19.3,-Math.PI/2-.1,'#d8cdbb');
+  horse(16.3,16.2,-Math.PI/2+.15,0);horse(16.4,19.3,-Math.PI/2-.1,1);
   frame(31,2.6,.25,()=>{for(const sx of [-1,1])for(const sz of [-1,1]){cyl('solid',[sx*2.1,1.3,sz*1.6],[.07,2.6,.07],P.woodDark);pillar(sx*2.1,sz*1.6,.15,2.6);}
     put('cloth',G.flagPlane,mtx([0,2.62,0],[4.6,3.6,1],[-Math.PI/2,0,0]),'#b5533e',{sway:[3,-1,.03]});for(const sz of [-1,1])put('cloth',G.flagPlane,mtx([0,2.35,sz*1.8],[4.6,.55,1]),'#e3c58a',{sway:[2.6,-.6,.08]});
     block(0,0,2.3,1.8,.3,2.42,{walkable:true});box('flat',[0,.03,0],[3.4,.05,2.4],'#a2584a',0,{ao:false});box('flat',[0,.04,0],[2.8,.05,1.8],'#d9b46a',0,{ao:false});person(-.8,-.2,.4,'merchant','#6d8a87');person(.9,.3,-2.6,'man','#c98b5e');});
@@ -461,7 +488,7 @@ export function buildEra(scene,{quality='normal'}={}) {
   huai(14.9,29.5,.9);huai(35.5,22,.95);
   // 歇脚场地面：草料、水槽、踩踏痕迹
   frame(26.6,23.6,.1,()=>{box('solid',[0,.32,0],[2.6,.64,.8],'#9c8a74');box('water',[0,.6,0],[2.3,.06,.55],'#7ea5a0');block(0,0,1.35,.45,.66);});
-  for(const [x,z,s] of [[16.6,26.8,1],[27.5,19.2,.8],[33.5,26.5,1.1]]){put('solid',G.dome,mtx([x,0,z],[1.1*s,.75*s,.9*s]),'#d6bf7a',{lod:'d'});pillar(x,z,.9*s,.8);}
+  for(const [x,z,s] of [[16.6,26.8,1],[29.8,21.8,.8],[33.5,26.5,1.1]]){put('solid',G.dome,mtx([x,0,z],[1.1*s,.75*s,.9*s]),'#d6bf7a',{lod:'d'});pillar(x,z,.9*s,.8);}
   for(let i=0;i<10;i++)paint.push(['trod',R(14,36)-1.5,R(0,34)-1,R(14,36)+1.5,R(0,34)+1]);
   willow(24,-.2+33,1,{});cyl('solid',[18,.3,33],[1.2,.6,.5],'#9c8a74');
   courtyard(61,8,-Math.PI/2,{W:18,D:18});courtyard(61,28,-Math.PI/2,{W:16,D:16});
@@ -537,22 +564,105 @@ export function buildEra(scene,{quality='normal'}={}) {
   scatter(-71,-.5,-13,36.5,8,['h','h','b']);scatter(13,-.5,71,36.5,7,['h','w']);scatter(-71,51.5,-13,105.5,10,['h','b','w']);scatter(13,51.5,71,105.5,10,['h','b','w']);
   scatter(-107,-.5,-81,105.5,9,['h','w']);scatter(81,-.5,107,105.5,9,['h','w']);scatter(-107,-70,-44,-28,8,['h','b']);scatter(53,-104,107,-28,7,['h','h','b']);scatter(14,-104,52,-74,4,['h']);
   
+  // 8.5) 街市生活细节（放在补植树木之后，不打乱原有布局的随机序列）；新增的人物带碰撞，所以高低画质都显示
+  const sit=(x,z,rot,type,color)=>{person(x,z,rot,type,color,'c',-.52);pillar(x,z,.32,1.3);};
+  const kid=(x,z,rot,color)=>{person(x,z,rot,pick(['man','woman']),color,'c',0,.62);pillar(x,z,.22,1.2);};
+  const stand=(x,z,rot,type,color)=>{person(x,z,rot,type,color,'c');pillar(x,z,.3,1.85);};
+  // 鼓：鼓身朝局部 z，架在四腿木座上（s 为缩放）
+  function drum(s=1){for(const sx of [-1,1])for(const sz of [-1,1])cyl('solid',[sx*.55*s,.32*s,sz*.3*s],[.06*s,.64*s,.06*s],P.woodDark);box('solid',[0,.66*s,0],[1.3*s,.08*s,.78*s],P.wood);
+    put('solid',G.cyl12,mtx([0,1.2*s,0],[.52*s,.62*s,.52*s],[Math.PI/2,0,0]),'#a8402f');for(const sz of [-1,1]){put('solid',G.cyl12,mtx([0,1.2*s,sz*.315*s],[.49*s,.02,.49*s],[Math.PI/2,0,0]),'#eadcbc',{ao:false});put('solid',G.cyl12,mtx([0,1.2*s,sz*.27*s],[.535*s,.05*s,.535*s],[Math.PI/2,0,0]),P.gold,{ao:false});}
+    for(const sx of [-1,1])beam('solid',[sx*.3*s,.74*s,.5*s],[sx*.42*s,.72*s,.95*s],.025*s,P.woodDark,{lod:'d'});block(0,0,.7*s,.42*s,1.74*s,F.elements[13]);}
+  // 街鼓亭：唐长安在主要街道的路口设“街鼓”，清晨和傍晚击鼓，坊门随之开闭
+  frame(-10.2,38.55,0,()=>{for(const sx of [-1,1])for(const sz of [-1,1]){cyl('solid',[sx*1.05,1.2,sz*.7],[.1,2.4,.1],P.red);pillar(sx*1.05,sz*.7,.16,2.4);}
+    for(const sz of [-1,1])box('solid',[0,2.32,sz*.7],[2.3,.16,.14],P.red);box('flat',[0,.04,0],[2.6,.08,1.9],P.stoneDark,0,{ao:false});
+    drum(1);roof(0,2.42,0,3.0,2.0,.85,'xie',{tile:P.tile,lift:.25});});
+  // 胡饼摊：土炉、案板与遮阳伞（胡饼是唐长安常见的街头食物）
+  function parasol(x,z,h,r,col){cyl('solid',[x,h/2,z],[.05,h,.05],P.woodDark);put('cloth',G.cone,mtx([x,h+.22,z],[r,.5,r]),jit(col,.03),{sway:[h,1,.03]});ball('solid',[x,h+.5,z],[.07,.08,.07],P.gold);pillar(x,z,.12,h);pillar(x,z,r*.8,.3,h-.16,{walkable:true});pillar(x,z,r*.4,.3,h+.06,{walkable:true});}
+  frame(10.2,38.45,0,()=>{box('solid',[.35,.4,0],[1.8,.8,.7],jit(P.wood,.04));box('solid',[.35,.82,0],[1.9,.05,.78],P.woodDark);block(.35,0,.95,.4,.86);
+    cyl('solid',[-1.1,.45,-.05],[.42,.9,.42],'#b8916a');cyl('solid',[-1.1,.92,-.05],[.3,.06,.3],'#3c302a');put('glow',G.cyl,mtx([-1.1,.95,-.05],[.22,.02,.22]),'#e0773c');box('solid',[-1.1,.3,.36],[.28,.22,.04],'#3c302a');pillar(-1.1,-.05,.45,1);
+    for(let i=0;i<8;i++)cyl('solid',[-.2+(i%4)*.34,.88+Math.floor(i/4)*.05,-.12+Math.floor(i/4)*.22],[.15,.04,.15],'#d9a75f',0,{ao:false});for(let i=0;i<4;i++)put('solid',G.dome,mtx([-.25+i*.3,.92,.22],[.1,.05,.1]),'#e3c48b',{ao:false,lod:'d'});
+    parasol(.9,-.45,2.3,1.45,'#c9923f');stand(.2,-.75,0,'merchant','#a35a42');stand(-1.15,.95,Math.PI,'woman','#c57f86');});
+  // 横街上的水果摊、路口踢蹴鞠（唐代流行的球戏）的孩子
+  frame(22.5,45.2,0,()=>{for(let i=0;i<4;i++){const px=-.9+(i%2)*1.1,pz=Math.floor(i/2)*1.0-.5;cyl('solid',[px,.22,pz],[.34,.44,.34],'#b39a6e');put('solid',G.dome,mtx([px,.42,pz],[.3,.2,.3]),['#d8b64f','#c9823e','#b54e3a','#7c9a5a'][i],{ao:false});}
+    beam('solid',[-.9,.5,.9],[.6,.55,1.3],.035,'#9a7a52');sit(1.0,.1,-Math.PI/2,'man','#8a9bb4');parasol(.2,-.9,2.2,1.3,'#5f8a86');pillar(-.35,0,.95,.6);});
+  kid(-9.6,43.3,.6,'#d98f86');kid(-11.4,44.8,2.4,'#7fa9a6');kid(-8.5,45.1,-2.2,'#e7cf8f');ball('solid',[-9.9,.16,44.3],[.16,.16,.16],'#c9923f');
+  stand(8.3,31,Math.PI*.6,'man','#7fa1a0');stand(8.5,32.3,-Math.PI*.7,'merchant','#c98b5e');
+  // 西市：市鼓亭（午时击鼓开市、日落前击钲散市）与地摊
+  frame(-18,34.8,0,()=>{box('solid',[0,.22,0],[2.9,.44,2.9],P.stone,0,{ao:false});for(const sx of [-1,1])for(const sz of [-1,1]){cyl('solid',[sx*1.05,.44+1.25,sz*1.05],[.11,2.5,.11],P.red);pillar(sx*1.05,sz*1.05,.17,2.94);}
+    block(0,0,1.45,1.45,.44);frame(0,0,0,()=>drum(1.15),.44);roof(0,2.94,0,3.4,3.4,1.25,'pyr',{tile:P.tile});
+    for(const sx of [-1,1])box('solid',[0,2.8,sx*1.05],[2.3,.14,.14],P.red);for(let i=0;i<3;i++)box('flat',[0,.12-i*.04,1.6+i*.3],[1.4,.24-i*.08,.3],P.stone,0,{ao:false});});
+  function rug(x,z,w,d,rot,c1,c2,c3){frame(x,z,rot,()=>{box('flat',[0,.02,0],[w+.16,.03,d+.16],c2,0,{ao:false});box('flat',[0,.035,0],[w,.03,d],c1,0,{ao:false});box('flat',[0,.05,0],[w*.62,.03,d*.6],c2,0,{ao:false});
+    box('flat',[0,.065,0],[w*.3,.03,w*.3],c3,[0,Math.PI/4,0],{ao:false});for(const sx of [-1,1])box('flat',[sx*w*.38,.05,0],[w*.06,.03,d*.7],c3,0,{ao:false,lod:'d'});});}
+  rug(-20.4,22.6,1.4,2.2,0,'#a2584a','#e1c27c','#5f8a86');for(let i=0;i<5;i++){const pz=21.9+i*.36;put('solid',G.ball2,mtx([-20.6,.2,pz],[.15,.18,.15]),['#5f8a86','#d1a55a','#efe2c4','#b76e45','#6f9a79'][i],{ao:false});}sit(-21.6,22.6,Math.PI/2,'woman','#9db38c');
+  rug(-20.4,27.4,1.4,2.2,0,'#5f6f8f','#d9c9a5','#b5533e');for(let i=0;i<4;i++)put('solid',G.cyl,mtx([-20.4,.14+(i%2)*.18,26.8+Math.floor(i/2)*.9],[.13,1.0,.13],[0,0,Math.PI/2]),['#d98f86','#e7cf8f','#7fa9a6','#c39ab8'][i],{ao:false});sit(-21.6,27.6,Math.PI/2,'merchant','#c98b5e');
+  // 驿馆：地毯与挂毯架（胡商带来的毛织品）
+  rug(21.6,21.2,2.6,1.8,.1,'#9b3f36','#e3c58a','#3f6a78');rug(36.6,19.2,2.4,1.7,-.15,'#3f6a78','#d9b46a','#a2584a');stand(23.3,21.8,-Math.PI/2,'merchant','#6d8a87');stand(20.2,22.9,2.5,'woman','#c7a2b8');
+  frame(28.6,29.4,0,()=>{for(const sx of [-1,1]){cyl('solid',[sx*.95,1.1,0],[.06,2.2,.06],P.woodDark);pillar(sx*.95,0,.1,2.2);}box('solid',[0,2.15,0],[2.1,.06,.06],P.woodDark);
+    put('cloth',G.flagPlane,mtx([0,1.3,0],[1.7,1.6,1]),'#8a3a32',{sway:[2.1,-1.6,.04]});put('cloth',G.flagPlane,mtx([0,1.3,.012],[1.2,1.1,1]),'#d9b46a',{sway:[2.1,-1.6,.04]});put('cloth',G.flagPlane,mtx([0,1.3,.024],[.5,.5,1]),'#3f6a78',{sway:[2.1,-1.6,.04]});});
+  // 营造院：瓦件与砖垛、木工凳、绘图案、起重架
+  frame(-30.5,-33.6,.1,()=>{box('solid',[0,.08,0],[1.9,.16,1.4],P.woodDark);for(let i=0;i<6;i++){const px=-.6+(i%3)*.6,pz=i<3?-.33:.33;box('solid',[px,.38,pz],[.5,.44,.6],jit('#6f7b7c',.03));for(let k=0;k<3;k++)box('solid',[px,.2+k*.14,pz+.31],[.52,.03,.02],'#56605f',0,{lod:'d',ao:false});}block(0,0,.95,.7,.62);});
+  frame(-34.6,-33.4,-.2,()=>{for(let i=0;i<2;i++){box('solid',[i*1.4-.7,.45,0],[1.2,.9,.8],jit('#b58d6e',.03));for(let k=1;k<5;k++)box('solid',[i*1.4-.7,k*.18,.405],[1.21,.015,.01],'#8f6a50',0,{lod:'d',ao:false});}block(0,0,1.35,.45,.9);});
+  frame(-17.3,-41.6,.35,()=>{for(const sx of [-1,1])for(const a of [-.35,.35]){beam('solid',[sx*.8+a*.5,0,0],[sx*.8-a*.5,.85,0],.05,P.wood);}put('solid',G.cyl,mtx([0,.98,0],[.2,2.6,.2],[0,0,Math.PI/2]),'#c99a6c');
+    box('solid',[.6,1.08,.18],[.05,.5,.02],'#9aa0a0',[0,0,.3],{lod:'d'});block(0,0,1.35,.3,1.2);stand(.55,.75,Math.PI,'man','#9db38c');});
+  frame(-27.6,-36.9,0,()=>{for(const sx of [-1,1])for(const sz of [-1,1])cyl('solid',[sx*.6,.38,sz*.33],[.04,.76,.04],P.woodDark);box('solid',[0,.79,0],[1.4,.06,.8],P.wood);box('solid',[0,.825,0],[1.0,.012,.62],'#f4ecd8',0,{ao:false});
+    for(const [px,pz,w,d] of [[0,-.15,.7,.02],[0,.12,.7,.02],[-.35,0,.02,.3],[.35,0,.02,.3],[0,-.15,.02,.27]])box('solid',[px,.835,pz],[w,.01,d],'#a8402f',0,{ao:false,lod:'d'});box('solid',[.55,.84,.2],[.16,.04,.12],'#2f2d2e',0,{ao:false,lod:'d'});block(0,0,.72,.42,.85);
+    stand(0,-.75,0,'merchant','#6d8a87');});
+  // 放线：用木桩和白灰线在地上画出新殿的平面（长方形）与柱位，先定形状再搭木构
+  frame(-23.4,-34.6,0,()=>{const W=8.4,D=4.6;for(const [px,pz,w,d] of [[0,-D/2,W,.07],[0,D/2,W,.07],[-W/2,0,.07,D],[W/2,0,.07,D],[0,0,W,.04]])box('flat',[px,.025,pz],[w,.02,d],'#f3eee2',0,{ao:false});
+    for(let i=0;i<4;i++)for(const sz of [-1,1])put('flat',G.cyl12,mtx([-W/2+W*i/3,.03,sz*D/2],[.2,.02,.2]),'#e9e2cf',{ao:false});
+    for(const sx of [-1,1])for(const sz of [-1,1]){cyl('solid',[sx*(W/2+.35),.22,sz*(D/2+.35)],[.045,.44,.045],'#9a7a52',0,{lod:'d'});beam('solid',[sx*(W/2+.35),.4,sz*(D/2+.35)],[-sx*(W/2+.35),.4,sz*(D/2+.35)],.008,'#efe6d2',{lod:'d'});}});
+  frame(-37.4,-45,0,()=>{cyl('solid',[0,3.3,0],[.16,6.6,.16],'#a88762');cyl('solid',[0,.15,0],[.5,.3,.5],P.stone);pillar(0,0,.3,6.6);for(const a of [0,2.1,4.2])beam('solid',[0,6.4,0],[Math.cos(a)*3.2,0,Math.sin(a)*3.2],.03,'#8a7a62',{lod:'d'});
+    beam('solid',[-1.2,5.6,0],[4.2,6.6,0],.11,'#b9875f');beam('solid',[4.0,6.55,0],[4.0,3.8,0],.02,'#6d5a44',{lod:'d'});put('solid',G.cyl,mtx([4.0,3.6,0],[.16,2.4,.16],[Math.PI/2,0,0]),'#c99a6c');
+    beam('solid',[-1.1,5.6,0],[-1.1,1.4,.3],.02,'#6d5a44',{lod:'d'});stand(-1.1,.55,Math.PI/2,'man','#a9845f');});
   // 9) 远景：外郭城墙、宫城门楼、终南山与北原
-  for(const sx of [-1,1]){box('solid',[sx*114,3.3,1],[4.5,6.6,226],'#c8b28f');for(let z=-110;z<113;z+=3)box('solid',[sx*111.9,7,z],[.4,.8,1.4],'#c4ab86');}
+  // 外郭东西墙在横街尽头开城门（驼队由西面城门进城、穿城而过）
+  for(const sx of [-1,1]){box('solid',[sx*114,3.3,-36],[4.5,6.6,152],'#c8b28f');box('solid',[sx*114,3.3,81],[4.5,6.6,66],'#c8b28f');for(let z=-110;z<113;z+=3)if(z<33||z>55)box('solid',[sx*111.9,7,z],[.4,.8,1.4],'#c4ab86');
+    for(const z of [36.5,51.5])box('solid',[sx*114,3.7,z],[9,7.4,6],'#cdb592');box('solid',[sx*114,6.3,44],[9,2.2,9],'#cdb592');box('solid',[sx*114,5.15,44],[9.02,.12,8.02],'#6d5b4c');
+    hall(sx*114,44,-sx*Math.PI/2,{w:15,d:6,h:3.6,y0:7.4,plat:.3,bays:5,roof:'xie',tile:P.glazeDark,ridge:'#3e5651',collide:false,brackets:false,lod:'d'});}
   box('solid',[-62,3.3,114],[104,6.6,4.5],'#c8b28f');box('solid',[62,3.3,114],[104,6.6,4.5],'#c8b28f');box('solid',[0,3.5,114],[24,7,9],'#cbb592');
   hall(0,114,Math.PI,{w:18,d:6.5,h:4,y0:7,plat:.3,bays:5,roof:'hip',tile:P.glazeDark,ridge:'#3e5651',collide:false,brackets:true});
   box('solid',[0,4,-114],[260,8,6],'#c6ad88');box('solid',[0,4.5,-114],[36,9,14],'#cdb592');
   hall(0,-114,0,{w:30,d:10,h:5,y0:9,plat:.4,bays:7,roof:'hip',tile:P.glazeDark,ridge:'#3e5651',collide:false,upper:{w:23,d:6,h:2.3,bays:5,rh:4.4}});
   for(const x of [-60,-30,30,60])hall(x,-128,0,{w:20,d:10,h:4.5,plat:1,bays:5,roof:x%60?'xie':'hip',tile:P.glaze,ridge:P.glazeDark,collide:false,brackets:false});
   hall(0,-150,0,{w:44,d:18,h:6,plat:3,bays:11,roof:'hip',tile:P.glazeDark,ridge:'#3e5651',collide:false,brackets:false,upper:{w:36,d:12,h:3,bays:9,rh:6.5}});
-  function ridge(cx,cz,rot,len,base,amp,depth,seed,c1,c2){const rr=seeded(seed),n=Math.round(len/9),pts=[];for(let i=0;i<=n;i++){const x=-len/2+len*i/n,t=i/n;pts.push([x+rr()*3,base+amp*(.55+.45*Math.sin(t*9.4+seed)*Math.sin(t*3.1+seed*.3))+rr()*amp*.35,rr()*8]);}
-    const pos=[],col=[],ca=C(c1),cb=C(c2);const vtx=(p,c)=>{pos.push(...p);col.push(c.r,c.g,c.b);};
-    for(let i=0;i<n;i++){const a=pts[i],b=pts[i+1],da=depth*(.7+.3*Math.sin(i*1.7)),db=depth*(.7+.3*Math.sin((i+1)*1.7));
-      vtx([a[0],-1,a[2]-da],cb);vtx([a[0],a[1],a[2]],ca);vtx([b[0],-1,b[2]-db],cb);vtx([b[0],-1,b[2]-db],cb);vtx([a[0],a[1],a[2]],ca);vtx([b[0],b[1],b[2]],ca);}
-    const g=triGeo(pos);g.setAttribute('color',new T.Float32BufferAttribute(col,3));frame(cx,cz,rot,()=>put('solid',g,mtx([0,0,0]),'#ffffff',{ao:false}));g.dispose();}
-  ridge(0,250,0,820,16,30,120,3,'#76918a','#a9b59e');ridge(-40,305,0,880,30,38,110,9,'#8ba3a0','#b6c2b4');
-  ridge(0,-240,Math.PI,780,8,14,80,5,'#7f978c','#abb49d');ridge(60,-300,Math.PI,820,16,18,80,11,'#94a9a1','#b8c2b3');
-  ridge(-255,0,-Math.PI/2,580,6,12,70,7,'#81988c','#acb59e');ridge(255,0,Math.PI/2,580,6,13,70,13,'#81988c','#acb59e');
+  // 宫城：围墙、角楼、北门与庭树（只在飞高或航拍时看到）
+  for(const sx of [-1,1]){box('solid',[sx*130,4,-157],[4,8,86],'#c6ad88',0,{ao:false});box('solid',[sx*130,8.3,-157],[4.4,.5,86.4],'#bfae92',0,{ao:false});
+    frame(sx*130,-200,0,()=>{box('solid',[0,5,0],[9,10,9],'#cdb592',0,{ao:false});for(const k of [-1,1])for(const j of [-1,1])cyl('solid',[k*2.6,11.4,j*2.6],[.22,2.8,.22],P.red,0,{lod:'d'});roof(0,12.8,0,8.4,8.4,2.6,'xie',{tile:P.glazeDark,ridge:'#3e5651',collide:false,lod:'d'});});}
+  box('solid',[0,4,-200],[264,8,4],'#c6ad88',0,{ao:false});box('solid',[0,8.3,-200],[264.4,.5,4.4],'#bfae92',0,{ao:false});box('solid',[0,4.5,-200],[30,9,12],'#cdb592',0,{ao:false});
+  hall(0,-200,Math.PI,{w:18,d:6.5,h:4,y0:9,plat:.3,bays:5,roof:'hip',tile:P.glazeDark,ridge:'#3e5651',collide:false,brackets:false,lod:'d'});
+  // 护城河与河岸（画在地面贴图上），南面大道从明德门跨河而出
+  for(const sx of [-1,1])for(const [z0,z1] of [[-111,40],[48,127]])paint.push(['bank',sx>0?117:-127,z0,sx>0?127:-117,z1],['moat',sx>0?119.5:-124.5,z0,sx>0?124.5:-119.5,Math.min(z1,124.5)]);
+  paint.push(['street',-128,40,-112,48],['street',112,40,128,48]);
+  paint.push(['bank',-127,117,-6,127],['bank',6,117,127,127],['moat',-124.5,119.5,-6,124.5],['moat',6,119.5,124.5,124.5],['walk',-6,116,6,128],['court',-128,-128,128,-117]);
+  // 远山：南面层叠的终南山、北面低缓的北原；单独的无雾材质，颜色按远近预先混入“空气透视”
+  const mtnP=[],mtnC=[];
+  function range(o){const rr=seeded(o.seed),M=o.cols,L=new T.Vector3(-.5,.83,.31).normalize(),hazeLow=C(eraDefinition.fog),hazeHigh=C('#b4c8d6'),haze=new T.Color(),base=C(o.col),top=C(o.top),ea=new T.Vector3(),eb=new T.Vector3(),nn=new T.Vector3(),cc=new T.Color();
+    let H=[];for(let i=0;i<M;i++)H.push(o.h(i/M*Math.PI*2)*(.72+.56*rr()));
+    H=H.map((h,i)=>(h*2+H[(i+M-1)%M]+H[(i+1)%M])/4*(rr()<.22?1+o.spike*rr():1));
+    const prof=[[-.05,-1.5],[.3,.3],[.66,.76],[1,1],[1.6,.2]],maxH=Math.max(...H),pts=[];
+    for(let i=0;i<M;i++){const t=(i+(rr()-.5)*.4)/M*Math.PI*2,row=[];for(const [f,hf] of prof){const r=o.r0+o.dr*f+(rr()-.5)*o.dr*.18,h=hf<0?hf:H[i]*hf*(f>0&&f<1?.85+.3*rr():1);row.push([Math.sin(t)*r,h,Math.cos(t)*r]);}pts.push(row);}
+    const tri=(p,q,s)=>{ea.set(q[0]-p[0],q[1]-p[1],q[2]-p[2]);eb.set(s[0]-p[0],s[1]-p[1],s[2]-p[2]);nn.crossVectors(ea,eb).normalize();if(nn.y<0)nn.negate();
+      const k=clamp((p[1]+q[1]+s[1])/3/maxH,0,1),sh=.64+.48*Math.max(0,nn.dot(L));haze.copy(hazeLow).lerp(hazeHigh,Math.min(1,k*1.6));cc.copy(base).lerp(top,Math.pow(k,.8)).multiplyScalar(sh).lerp(haze,o.hz+(1-o.hz)*.35*Math.pow(1-k,3));
+      for(const v of [p,q,s]){mtnP.push(v[0],v[1],v[2]);mtnC.push(cc.r,cc.g,cc.b);}};
+    for(let i=0;i<M;i++){const A=pts[i],B=pts[(i+1)%M];for(let j=0;j<prof.length-1;j++){tri(A[j],B[j],A[j+1]);tri(B[j],B[j+1],A[j+1]);}}}
+  range({seed:9,cols:96,r0:350,dr:105,hz:.42,spike:.7,col:'#4f7480',top:'#7f9cab',h:t=>9+68*Math.pow(Math.max(0,Math.cos(t)),1.3)+12*Math.pow(Math.max(0,-Math.cos(t)),2)});
+  range({seed:3,cols:120,r0:258,dr:50,hz:.22,spike:.5,col:'#5f8468',top:'#8fa684',h:t=>4+21*Math.pow(Math.max(0,Math.cos(t)),2)+13*Math.pow(Math.max(0,-Math.cos(t)),2)});
+  const mtnG=own(triGeo(mtnP));mtnG.setAttribute('color',new T.Float32BufferAttribute(mtnC,3));mtnG.computeBoundingSphere();
+  const mountains=new T.Mesh(mtnG,own(new T.MeshBasicMaterial({vertexColors:true,fog:false,toneMapped:false,side:T.DoubleSide})));mountains.matrixAutoUpdate=false;root.add(mountains);
+  // 城外：护城河边的柳行、通往南方的大道树行、田间村落（细节层，低画质隐藏）
+  function convex(tris){const c=[0,0,0];let n=0;for(const t of tris)for(const v of t){c[0]+=v[0];c[1]+=v[1];c[2]+=v[2];n++;}c[0]/=n;c[1]/=n;c[2]/=n;const pos=[];
+    for(let [a,b,d] of tris){const u=[b[0]-a[0],b[1]-a[1],b[2]-a[2]],v=[d[0]-a[0],d[1]-a[1],d[2]-a[2]],nx=u[1]*v[2]-u[2]*v[1],ny=u[2]*v[0]-u[0]*v[2],nz=u[0]*v[1]-u[1]*v[0];
+      if(nx*((a[0]+b[0]+d[0])/3-c[0])+ny*((a[1]+b[1]+d[1])/3-c[1])+nz*((a[2]+b[2]+d[2])/3-c[2])<0)[b,d]=[d,b];pos.push(...a,...b,...d);}return triGeo(pos);}
+  {const A=[-.5,0,-.5],B=[.5,0,-.5],Cc=[.5,0,.5],D=[-.5,0,.5],E=[-.5,1,0],Fp=[.5,1,0];G.prism=T_(convex([[A,B,Fp],[A,Fp,E],[D,Cc,Fp],[D,Fp,E],[A,E,D],[B,Fp,Cc]]));}
+  function lolly(x,z,s=1,col){cyl('solid',[x,1.1*s,z],[.2*s,2.2*s,.2*s],P.woodDark,0,{lod:'d',ao:false});ball('solid',[x,2.9*s,z],[1.8*s,1.45*s,1.8*s],jit(col||pick([P.leaf,P.leafDark,'#7f9a6a']),.04),[0,R(0,3),0],{lod:'d',ao:false});}
+  function farmhouse(x,z,rot,s=1){frame(x,z,rot,()=>{box('solid',[0,1.1*s,0],[4.4*s,2.2*s,3*s],jit('#ddd0b4',.03),0,{lod:'d',ao:false});box('solid',[0,.9*s,1.52*s],[.9*s,1.6*s,.06],'#6d5444',0,{lod:'d',ao:false});put('solid',G.prism,mtx([0,2.15*s,0],[5*s,1.5*s,3.9*s]),jit('#7b8582',.03),{lod:'d'});});}
+  for(let z=122;z<250;z+=9)for(const sx of [-1,1])lolly(sx*8,z+R(-1,1),R(.9,1.1));
+  for(const sx of [-1,1])for(let z=-104;z<126;z+=6.5)lolly(sx*129,z,z%13?R(.7,.9):R(.9,1.05),z%13?'#a8b685':'#9fb07c');
+  for(let x=-122;x<126;x+=13)if(Math.abs(x)>14)lolly(x,129,R(.85,1.05),'#9fb07c');
+  for(let i=0,t=0;i<13&&t<400;t++){const a=R(0,Math.PI*2),r=R(150,232),x=Math.sin(a)*r,z=Math.cos(a)*r;
+    if((z>100&&Math.abs(x)<20)||Math.abs(z+218)<26||(Math.abs(x)<146&&z<-104&&z>-212)||Math.max(Math.abs(x),Math.abs(z))<140)continue;i++;
+    const rot=R(-.3,.3);for(let k=0;k<pick([3,4,5]);k++){const hx=x+R(-9,9),hz=z+R(-7,7);farmhouse(hx,hz,rot+(k%2)*Math.PI/2,R(.8,1.05));}for(let k=0;k<6;k++)lolly(x+R(-13,13),z+R(-11,11),R(.8,1.2));}
+  for(const [x,z] of [[-80,-150],[80,-150],[-100,-176],[100,-176],[-45,-182],[45,-182],[-112,-128],[112,-128]])for(let k=0;k<3;k++)lolly(x+R(-5,5),z+R(-4,4),R(.9,1.2));
 
   // ================= 收尾：合并网格、材质、地面、天空 =================
   const solidMat=own(new T.MeshStandardMaterial({vertexColors:true,roughness:.86}));
@@ -566,6 +676,9 @@ export function buildEra(scene,{quality='normal'}={}) {
     cloth:own(windify(new T.MeshStandardMaterial({vertexColors:true,roughness:.92,side:T.DoubleSide}),1.9)),leaf:own(windify(new T.MeshStandardMaterial({vertexColors:true,roughness:.95}),1.1)),
     glow:own(windify(new T.MeshStandardMaterial({vertexColors:true,roughness:.65,emissive:new T.Color('#c0602c'),emissiveIntensity:.42}),1.4)),water:own(new T.MeshStandardMaterial({vertexColors:true,roughness:.22,metalness:.12}))};
   const detail=[],shadowCasters=[];
+  // 很小的分块（几百个顶点）单独占一次绘制不划算：按「种类 × 画质层」并进一个公共网格
+  for(const [key,b] of buckets){if(b.far||b.p.length>=13500)continue;const mk=`${b.kind}|m|${b.lod}`;let m=buckets.get(mk);if(!m){m={...newAcc(b.kind),far:false,lod:b.lod,cx:'m',cz:'m'};buckets.set(mk,m);}
+    if(m===b)continue;for(const a of ['p','n','c','uv','w'])if(b[a])for(let i=0;i<b[a].length;i++)m[a].push(b[a][i]);buckets.delete(key);}
   for(const b of buckets.values()){if(!b.p.length)continue;const g=own(new T.BufferGeometry());
     g.setAttribute('position',new T.Float32BufferAttribute(b.p,3));g.setAttribute('normal',new T.Float32BufferAttribute(b.n,3));g.setAttribute('color',new T.Float32BufferAttribute(b.c,3));
     if(b.uv)g.setAttribute('uv',new T.Float32BufferAttribute(b.uv,2));if(b.w)g.setAttribute('sway',new T.Float32BufferAttribute(b.w,1));g.computeBoundingSphere();
@@ -575,12 +688,12 @@ export function buildEra(scene,{quality='normal'}={}) {
   // 地面：画布贴图分区（街道、广场、院落、草地、车辙）+ 建筑接地阴影
   const groundG=own(new T.PlaneGeometry(256,256));groundG.rotateX(-Math.PI/2);
   const groundMat=own(new T.MeshStandardMaterial({color:hasDOM?'#ffffff':'#cdbc98',roughness:.96}));
-  groundMat.onBeforeCompile=s=>{s.vertexShader='varying vec3 vGW;\n'+s.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvGW=(modelMatrix*vec4(transformed,1.0)).xyz;');s.fragmentShader='varying vec3 vGW;\n'+s.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\nfloat gN=sin(vGW.x*.83)*sin(vGW.z*.71)+sin(vGW.x*.21+vGW.z*.29)*.9+sin(vGW.x*3.1-vGW.z*2.7)*.25;diffuseColor.rgb*=1.0+gN*.018;');};
+  groundMat.onBeforeCompile=s=>{s.vertexShader='varying vec3 vGW;\n'+s.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvGW=(modelMatrix*vec4(transformed,1.0)).xyz;');s.fragmentShader='varying vec3 vGW;\n'+s.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\nfloat gN=sin(vGW.x*.83)*sin(vGW.z*.71)+sin(vGW.x*.21+vGW.z*.29)*.9+sin(vGW.x*3.1-vGW.z*2.7)*.25;diffuseColor.rgb*=1.0+gN*.03;');};
   groundMat.customProgramCacheKey=()=>'changan-ground';
   if(hasDOM){const S=1024,k=S/256,c=document.createElement('canvas');c.width=S;c.height=S;const x=c.getContext('2d');
-    if(x){const X=v=>(v+128)*k;x.fillStyle='#cfbe9a';x.fillRect(0,0,S,S);
-      const ZC={walk:'#d8cbac',street:'#d4c39f',plaza:'#d7cbae',yard:'#d2c3a1',court:'#dcd3c1',grass:'#b8bc92',trod:'rgba(150,120,85,.18)'};
-      for(const t of ['yard','street','walk','plaza','court','grass','trod'])for(const [ty,x1,z1,x2,z2] of paint)if(ty===t){x.fillStyle=ZC[t];x.fillRect(X(x1),X(z1),(x2-x1)*k,(z2-z1)*k);
+    if(x){const X=v=>(v+128)*k;x.fillStyle='#c9b893';x.fillRect(0,0,S,S);
+      const ZC={walk:'#d5c7a7',street:'#cfbd98',plaza:'#d4c7a9',yard:'#ccbb97',court:'#d9d0bd',grass:'#b3b98b',trod:'rgba(150,120,85,.18)',moat:'#8db4b4',bank:'#c9b78f'};
+      for(const t of ['yard','street','walk','plaza','court','grass','trod','bank','moat'])for(const [ty,x1,z1,x2,z2] of paint)if(ty===t){x.fillStyle=ZC[t];x.fillRect(X(x1),X(z1),(x2-x1)*k,(z2-z1)*k);
         if(t==='court'){x.fillStyle='rgba(120,100,80,.07)';for(let gx=x1;gx<x2;gx+=1.2)x.fillRect(X(gx),X(z1),1,(z2-z1)*k);for(let gz=z1;gz<z2;gz+=1.2)x.fillRect(X(x1),X(gz),(x2-x1)*k,1);}
         if(t==='street'){x.fillStyle='rgba(130,105,75,.14)';const along=(x2-x1)>(z2-z1);for(const o of [-.9,.9]){if(along)x.fillRect(X(x1),X((z1+z2)/2+o),(x2-x1)*k,3);else x.fillRect(X((x1+x2)/2+o),X(z1),3,(z2-z1)*k);}}}
       for(let i=0;i<36000;i++){const l=rand();x.fillStyle=l<.5?`rgba(110,90,60,${R(.03,.08)})`:`rgba(250,240,220,${R(.03,.08)})`;const s=R(1,4);x.fillRect(rand()*S,rand()*S,s,s);}
@@ -588,32 +701,59 @@ export function buildEra(scene,{quality='normal'}={}) {
       for(const [fx,fz,hx,hz,dk] of footprints)for(let i=0;i<4;i++){x.fillStyle=`rgba(80,60,40,${dk*.22})`;const e=i*.45;x.fillRect(X(fx-hx-e),X(fz-hz-e),(hx+e)*2*k,(hz+e)*2*k);}
       const tex=own(new T.CanvasTexture(c));tex.colorSpace=T.SRGBColorSpace;tex.anisotropy=4;groundMat.map=tex;}}
   const ground=new T.Mesh(groundG,groundMat);ground.receiveShadow=true;root.add(ground);
-  const outerG=own(new T.PlaneGeometry(1400,1400));outerG.rotateX(-Math.PI/2);const outer=new T.Mesh(outerG,own(new T.MeshStandardMaterial({color:'#c5b791',roughness:1})));outer.position.y=-.04;root.add(outer);
+  // 城外地面：田块拼接、田埂、通往南方的大道、渭水与宫城庭院（着色器生成，不增加绘制次数）
+  const outerG=own(new T.PlaneGeometry(1400,1400));outerG.rotateX(-Math.PI/2);const outerMat=own(new T.MeshStandardMaterial({color:'#c9b893',roughness:1}));
+  const FU={fA:{value:C('#d3c084')},fB:{value:C('#a7b779')},fC:{value:C('#bcc48a')},fD:{value:C('#c7aa7c')},fPath:{value:C('#dccdab')},fWater:{value:C('#8db4b4')},fPave:{value:C('#dcd3bf')}};
+  outerMat.onBeforeCompile=s=>{Object.assign(s.uniforms,FU);s.vertexShader='varying vec3 vOW;\n'+s.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvOW=(modelMatrix*vec4(transformed,1.0)).xyz;');
+    s.fragmentShader='varying vec3 vOW;uniform vec3 fA,fB,fC,fD,fPath,fWater,fPave;\nfloat h21(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}\n'+s.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
+      vec2 p=vOW.xz;float dc=max(abs(p.x),abs(p.y));vec2 cs=vec2(30.0,21.0),cl=floor(p/cs),f=fract(p/cs);float h=h21(cl);
+      vec3 fc=h<.3?fA:h<.55?fB:h<.8?fC:fD;fc*=.95+.05*sin((h<.5?p.x:p.y)*2.4);fc*=.97+.06*h21(cl+7.0);
+      fc=mix(fc,fPath,max(step(f.x,.035),step(f.y,.05)));
+      fc=mix(fc,fPath,(1.0-smoothstep(4.5,5.5,abs(p.x)))*step(110.0,p.y));fc=mix(fc,fPath,(1.0-smoothstep(4.0,5.0,abs(p.y-44.0)))*step(110.0,abs(p.x)));
+      float rz=-218.0+14.0*sin(p.x*.011)+7.0*sin(p.x*.029+1.3);fc=mix(fc,fWater,1.0-smoothstep(8.0,11.0,abs(p.y-rz)));
+      fc=mix(diffuseColor.rgb,fc,smoothstep(132.0,150.0,dc));
+      fc=mix(fc,fPave,step(abs(p.x),128.0)*step(-198.0,p.y)*step(p.y,-116.0));
+      diffuseColor.rgb=fc;`);};
+  outerMat.customProgramCacheKey=()=>'changan-outer';const outer=new T.Mesh(outerG,outerMat);outer.position.y=-.04;outer.receiveShadow=false;root.add(outer);
   // 匾额文字
   for(const p of plaques){const c=document.createElement('canvas');c.width=512;c.height=192;const x=c.getContext('2d');if(!x)continue;x.fillStyle='#e8c77c';x.font='600 120px "Songti SC","Noto Serif CJK SC","SimSun",serif';x.textAlign='center';x.textBaseline='middle';x.fillText(p.text,256,100);
     const t=own(new T.CanvasTexture(c));t.colorSpace=T.SRGBColorSpace;const m=own(new T.MeshBasicMaterial({map:t,transparent:true,depthWrite:false}));const g=own(new T.PlaneGeometry(p.w*.9,p.h*.86));const mesh=new T.Mesh(g,m);mesh.position.set(p.x,p.y,p.z);mesh.rotation.y=p.rot;root.add(mesh);}
-  // 天空穹顶 + 云
-  const skyMat=own(new T.ShaderMaterial({side:T.BackSide,depthWrite:false,fog:false,uniforms:{top:{value:new T.Color('#86b4cf')},horizon:{value:new T.Color('#e8e8dc')},sun:{value:new T.Vector3(-.5,.42,.35).normalize()}},
+  // 天空穹顶：直接输出屏幕色（不经色调映射），地平线颜色与雾色完全一致，远处建筑自然融进天色
+  const disp=hex=>{const t={r:0,g:0,b:0};C(hex).getRGB(t,T.SRGBColorSpace);return new T.Vector3(t.r,t.g,t.b);};
+  const skyMat=own(new T.ShaderMaterial({side:T.BackSide,depthWrite:false,fog:false,uniforms:{zen:{value:disp('#3f82c4')},mid:{value:disp('#93c0de')},hor:{value:disp(eraDefinition.fog)},glow:{value:disp('#fff3d8')},sun:{value:new T.Vector3(-.52,.36,.4).normalize()}},
     vertexShader:'varying vec3 vD;void main(){vD=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
-    fragmentShader:'varying vec3 vD;uniform vec3 top;uniform vec3 horizon;uniform vec3 sun;void main(){vec3 d=normalize(vD);float t=pow(max(d.y,0.0),.55);vec3 c=mix(horizon,top,t);float s=max(dot(d,sun),0.0);c+=vec3(1.0,.86,.6)*pow(s,24.0)*.16;gl_FragColor=vec4(c,1.0);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}'}));
+    fragmentShader:'varying vec3 vD;uniform vec3 zen,mid,hor,glow,sun;void main(){vec3 d=normalize(vD);float y=d.y;vec3 c=mix(hor,mid,smoothstep(.0,.2,y));c=mix(c,zen,smoothstep(.14,.72,y));float s=max(dot(d,sun),0.0);c=mix(c,glow,clamp(pow(s,8.0)*.32+pow(s,80.0)*.7,0.0,1.0));gl_FragColor=vec4(c,1.0);}'}));
   const skyG=own(new T.SphereGeometry(600,32,16));const sky=new T.Mesh(skyG,skyMat);sky.frustumCulled=false;sky.renderOrder=-10;root.add(sky);
-  const clouds=[];
-  if(hasDOM){const c=document.createElement('canvas');c.width=256;c.height=128;const x=c.getContext('2d');if(x){for(let i=0;i<26;i++){const px=40+rand()*176,py=48+rand()*38,r=20+rand()*26,g=x.createRadialGradient(px,py,0,px,py,r);g.addColorStop(0,'rgba(255,255,255,.6)');g.addColorStop(.6,'rgba(255,255,255,.3)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(px-r,py-r,r*2,r*2);}
-    const tex=own(new T.CanvasTexture(c));tex.colorSpace=T.SRGBColorSpace;
-    for(let i=0;i<16;i++){const a=i/16*Math.PI*2+R(-.15,.15),r=R(250,400);const m=own(new T.SpriteMaterial({map:tex,color:i%4?'#fffaf0':'#e3ebe6',transparent:true,opacity:.85,depthWrite:false,fog:false}));const s=new T.Sprite(m);s.position.set(Math.sin(a)*r,R(70,115),Math.cos(a)*r);const sc=R(90,150);s.scale.set(sc,sc*.42,1);root.add(s);clouds.push({s,base:s.position.x,spd:R(.6,1.2)});}}}
+  // 云：四种云形画在一张贴图上，全部云片合成一个网格（一次绘制），面朝城市
+  let cloudMesh=null,cloudN=0;
+  if(hasDOM){const c=document.createElement('canvas');c.width=512;c.height=256;const x=c.getContext('2d');if(x){
+    for(let k=0;k<4;k++){const ox=(k%2)*256,oy=Math.floor(k/2)*128,bl=[];for(let i=0;i<8+k*2;i++){const r=12+rand()*20,t=i/(7+k*2);bl.push([ox+34+t*188+rand()*10,oy+96-r*.55-(1-Math.abs(t-.5)*2)*rand()*22,r]);}
+      for(const [px,py,r] of bl){const g=x.createRadialGradient(px,py+r*.2,r*.1,px,py,r);g.addColorStop(0,'rgba(226,228,236,1)');g.addColorStop(.72,'rgba(238,238,240,.9)');g.addColorStop(1,'rgba(240,240,244,0)');x.fillStyle=g;x.beginPath();x.arc(px,py,r,0,Math.PI*2);x.fill();}
+      for(const [px,py,r] of bl){const g=x.createRadialGradient(px-r*.25,py-r*.4,0,px,py-r*.1,r*.85);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(.6,'rgba(255,253,248,.7)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.beginPath();x.arc(px,py-r*.1,r*.85,0,Math.PI*2);x.fill();}
+      x.save();x.globalCompositeOperation='destination-out';const g=x.createLinearGradient(0,oy+88,0,oy+100);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,1)');x.fillStyle=g;x.fillRect(ox,oy+88,256,40);x.restore();}
+    const tex=own(new T.CanvasTexture(c));tex.colorSpace=T.SRGBColorSpace;const pos=[],uv=[],col=[];cloudN=22;
+    for(let i=0;i<cloudN;i++){const a=i/cloudN*Math.PI*2+R(-.12,.12),r=R(300,440),y=R(85,140),w=R(110,190),h=w*.4,k=i%4,cx=Math.sin(a)*r,cz=Math.cos(a)*r,rx=Math.cos(a)*w/2,rz=-Math.sin(a)*w/2;
+      const u0=(k%2)*.5,v0=.5-Math.floor(k/2)*.5,tint=C(pick(['#ffffff','#fff8ec','#f1f4f8']));
+      const q=[[cx-rx,y-h/2,cz-rz,u0,v0],[cx+rx,y-h/2,cz+rz,u0+.5,v0],[cx+rx,y+h/2,cz+rz,u0+.5,v0+.5],[cx-rx,y+h/2,cz-rz,u0,v0+.5]];
+      for(const n of [0,1,2,0,2,3]){pos.push(q[n][0],q[n][1],q[n][2]);uv.push(q[n][3],q[n][4]);col.push(tint.r,tint.g,tint.b);}}
+    const g=own(new T.BufferGeometry());g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));g.setAttribute('color',new T.Float32BufferAttribute(col,3));g.computeBoundingSphere();
+    cloudMesh=new T.Mesh(g,own(new T.MeshBasicMaterial({map:tex,vertexColors:true,transparent:true,opacity:.92,depthWrite:false,fog:false,toneMapped:false,side:T.DoubleSide})));cloudMesh.frustumCulled=false;cloudMesh.renderOrder=-5;root.add(cloudMesh);}}
 
   // ================= 街市生活：行人、驼队、牛车、飞鸟、花瓣 =================
   const walk=(type,a,b,speed=R(.9,1.35))=>addMover(type,[a,b],speed,rand());
   const who=(m=.2)=>{const r=rand();return r<m?'merchant':r<.6?'man':'woman';};
+  // 骑马的官员与驿使、挑担的小贩：排在各自列表最前面，低画质只保留部分行人时也不会丢
+  for(const [pts,sp,type,color,off] of [[[[1.9,104],[1.9,-14]],1.7,'man','#b9655a',.61],[[[-1.9,-14],[-1.9,104]],1.55,'merchant','#5f7f9a',.05],[[[-60,-15.5],[60,-15.5]],1.5,'man','#8a6f9a',.3],[[[76,-18],[76,104]],1.6,'man','#c98b5e',.7]]){addMover(type,pts,sp,off,{color});Object.assign(movers[movers.length-1],{ride:true,lift:.84});}
+  for(const pts of [[[6.4,100],[6.4,-12]],[[-6.4,-12],[-6.4,100]],[[-14,46.4],[-100,46.4]],[[-14.8,31],[-14.8,10.5]],[[18.2,31],[18.2,3]]]){addMover('man',pts,R(.85,1.05),rand(),{color:pick(['#8a9bb4','#a9845f','#7fa1a0','#c98b5e'])});movers[movers.length-1].load=true;}
   for(let i=0;i<12;i++){const x=pick([-5.8,-2.8,2.8,5.8]);walk(who(.15),[x,-14],[x,104]);}
   for(let i=0;i<4;i++)walk(who(),[-60,-12-i*1.6],[60,-12-i*1.6]);
   walk('man',[7.8,-12],[7.8,-70]);walk('woman',[-7.8,-70],[-7.8,-12]);walk('man',[2.6,-34],[2.6,-100]);walk(who(),[-2.6,-100],[-2.6,-34]);
   walk('woman',[-22.2,6],[-22.2,30]);walk('merchant',[-22.4,30],[-22.4,6]);walk(who(.4),[-42,0],[-42,36]);walk(who(.4),[-43.5,36],[-43.5,0]);walk(who(),[-70,15],[-30,15]);walk(who(),[-30,21.6],[-70,21.6]);walk('man',[-60.8,2],[-60.8,34]);
   walk('merchant',[25,30],[25,14]);walk('man',[39.3,2],[39.3,34]);walk('merchant',[38,34],[27,34]);
-  for(let i=0;i<5;i++)walk(who(),[-100+i*7,37.9],[100-i*9,37.9]);
+  for(let i=0;i<5;i++)walk(who(),[-100+i*7,48.2],[100-i*9,48.2]);
   walk(who(),[-42,52],[-42,104]);walk(who(),[42,104],[42,52]);walk(who(),[-70,80],[-14,80]);walk(who(),[70,80],[14,80]);walk('man',[-76,-20],[-76,104]);walk('woman',[76,104],[76,-20]);
   walk('man',[-34,-31],[-34,-52]);walk(who(),[33,-34],[33,-52]);walk('man',[-30,-31],[-14,-31],.8);
-  const CAR=[[118,40.6],[-118,40.6]];for(let i=0;i<5;i++)addMover('camel',CAR,.95,i*3.7/236,{closed:false});addMover('merchant',CAR,.95,-3/236,{closed:false});
+  const CAR=[[-118,40.6],[118,40.6]];for(let i=0;i<5;i++)addMover('camel',CAR,.95,.3+i*3.7/236,{closed:false});addMover('merchant',CAR,.95,.3+17.6/236,{closed:false});
   for(const [x,z,h] of [[25.8,5.6,.5],[28.4,5.0,-.9],[34.6,16.8,2.6]]){addMover('camel',[[x,z],[x,z]],0,0);pillar(x,z,1.1,2.6);movers[movers.length-1].fixedH=h;}
   addMover('cart',[[4.2,104],[4.2,-14],[-4.2,-14],[-4.2,104]],1.25,0);addMover('cart',[[4.2,104],[4.2,-14],[-4.2,-14],[-4.2,104]],1.25,.5);
   const groups={};for(const m of movers){(groups[m.kind]||(groups[m.kind]=[])).push(m);}
@@ -621,15 +761,18 @@ export function buildEra(scene,{quality='normal'}={}) {
   function iMesh(geo,n){const m=new T.InstancedMesh(geo,solidMat,n);m.castShadow=true;m.receiveShadow=true;m.frustumCulled=false;m.instanceMatrix.setUsage(T.DynamicDrawUsage);root.add(m);return m;}
   for(const type of ['man','woman','merchant']){const list=groups[type]||[];if(!list.length)continue;const body=iMesh(PEOPLE[type].body,list.length),head=iMesh(PEOPLE[type].head,list.length);
     list.forEach((m,i)=>body.setColorAt(i,C(m.color||pick(ROBES))));body.instanceColor.needsUpdate=true;inst.push({list,meshes:[body,head],kind:'person',full:list.length});}
-  const camels=groups.camel||[],camelMesh=iMesh(camelBody,camels.length),legMesh=iMesh(camelLeg,camels.length*4);inst.push({list:camels,meshes:[camelMesh],legs:legMesh,kind:'camel',full:camels.length});
+  const HIPS=[[-.3,1.45,.72,0],[.3,1.45,.72,Math.PI],[-.3,1.45,-.72,Math.PI],[.3,1.45,-.72,0]],HHIPS=[[-.15,1.06,.5,0],[.15,1.06,.5,Math.PI],[-.16,1.06,-.56,Math.PI],[.16,1.06,-.56,0]];
+  const camels=groups.camel||[],riders=movers.filter(m=>m.ride),porters=movers.filter(m=>m.load),camelMesh=iMesh(camelBody,camels.length),legMesh=iMesh(camelLeg,camels.length*4),hLegMesh=iMesh(horseLeg,riders.length*4);inst.push({list:camels,meshes:[camelMesh],legs:legMesh,legBase:0,hips:HIPS,kind:'camel',full:camels.length});
+  const horseMesh=iMesh(riderHorse,riders.length);inst.push({list:riders,meshes:[horseMesh],legs:hLegMesh,legBase:0,hips:HHIPS,kind:'horse',full:riders.length});
+  const loadMesh=iMesh(porterLoad,porters.length);inst.push({list:porters,meshes:[loadMesh],kind:'load',full:porters.length});
   const carts=groups.cart||[],cartMesh=iMesh(oxCart,carts.length);inst.push({list:carts,meshes:[cartMesh],kind:'cart',full:carts.length});
-  const HIPS=[[-.3,1.45,.78,0],[.3,1.45,.78,Math.PI],[-.3,1.45,-.78,Math.PI],[.3,1.45,-.78,0]];
   function placeMovers(time,moving){for(const g of inst){const n=g.meshes[0].count;
     for(let i=0;i<n;i++){const m=g.list[i],dist=m.offset+(moving?time*m.speed:0);if(m.speed>0)sampleRoute(m,dist);else{m.x=m.r.seg[0][0];m.z=m.r.seg[0][1];m.h=m.fixedH||0;}
-      const ph=dist*(g.kind==='camel'?1.9:g.kind==='cart'?1.2:4.4)+m.phase,bob=m.speed>0?(g.kind==='person'?Math.abs(Math.sin(ph))*.05:Math.abs(Math.sin(ph))*.03):0;
-      _re.set(0,m.h,m.speed>0&&g.kind==='person'?Math.sin(ph)*.035:0);_rq.setFromEuler(_re);_mat.compose(_pos.set(m.x,bob,m.z),_rq,_one);
+      const gait=m.ride?'horse':g.kind,walker=!m.ride&&(gait==='person'||gait==='load');
+      const ph=dist*(gait==='camel'?1.9:gait==='cart'?1.2:gait==='horse'?2.7:4.4)+m.phase,bob=m.speed>0?(walker?Math.abs(Math.sin(ph))*.05:Math.abs(Math.sin(ph))*.03):0;
+      _re.set(0,m.h,m.speed>0&&walker?Math.sin(ph)*.035:0);_rq.setFromEuler(_re);_mat.compose(_pos.set(m.x,bob+(g.kind==='person'&&m.lift||0),m.z),_rq,_one);
       for(const mesh of g.meshes)mesh.setMatrixAt(i,_mat);
-      if(g.legs)for(let k=0;k<4;k++){const hp=HIPS[k],a=m.speed>0?Math.sin(ph+hp[3])*.32:0;_l.makeRotationX(a).setPosition(hp[0],hp[1],hp[2]);_l.premultiply(_mat);g.legs.setMatrixAt(i*4+k,_l);}}
+      if(g.legs)for(let k=0;k<4;k++){const hp=g.hips[k],a=m.speed>0?Math.sin(ph+hp[3])*.32:0;_l.makeRotationX(a).setPosition(hp[0],hp[1],hp[2]);if(g.legScale)_l.scale(g.legScale);_l.premultiply(_mat);g.legs.setMatrixAt(g.legBase+i*4+k,_l);}}
     for(const mesh of g.meshes)mesh.instanceMatrix.needsUpdate=true;if(g.legs)g.legs.instanceMatrix.needsUpdate=true;}}
   // 飞鸟
   const birdG=own(new T.BufferGeometry());birdG.setAttribute('position',new T.Float32BufferAttribute([0,0,.18,-.75,.12,-.08,0,0,-.12, 0,0,.18,0,0,-.12,.75,.12,-.08],3));birdG.computeVertexNormals();
@@ -643,15 +786,15 @@ export function buildEra(scene,{quality='normal'}={}) {
   placeMovers(0,false);placeBirds(0);
   function setQuality(value){low=value==='low';for(const m of shadowCasters)m.castShadow=!low;for(const m of detail)m.visible=!low;
     for(const g of inst)for(const mesh of g.meshes){mesh.count=low&&g.kind==='person'?Math.ceil(g.full*.45):g.full;mesh.castShadow=!low;}
-    legMesh.count=camelMesh.count*4;legMesh.castShadow=!low;birds.visible=!low;petals.visible=!low;clouds.forEach((c,i)=>c.s.visible=!low||i%2===0);}
+    legMesh.count=camelMesh.count*4;hLegMesh.count=horseMesh.count*4;hLegMesh.castShadow=!low;legMesh.castShadow=!low;birds.visible=!low;petals.visible=!low;if(cloudMesh)cloudMesh.geometry.setDrawRange(0,low?Math.ceil(cloudN*.6)*6:Infinity);}
   setQuality(quality);
   return {ground,obstacles,
     update(dt,time,player,reduced){if(!alive)return;
       if(!low&&player)for(const m of detail){const s=m.geometry.boundingSphere;m.visible=Math.hypot(s.center.x-player.x,s.center.z-player.z)<s.radius+70;}
       if(reduced)return;timeU.value=time;placeMovers(time,true);
-      if(!low){placeBirds(time);for(const c of clouds)c.s.position.x=c.base+Math.sin(time*.01*c.spd)*14;
+      if(!low){placeBirds(time);if(cloudMesh)cloudMesh.rotation.y=time*.0025;
         const p=petalG.attributes.position;for(let i=0;i<PN;i++){let y=p.getY(i)-dt*.35;if(y<.15)y=4.5;p.setY(i,y);p.setX(i,p.getX(i)+Math.sin(time*.7+i)*dt*.12);}p.needsUpdate=true;}},
     setQuality,
-    dispose(){if(!alive)return;alive=false;scene.remove(root);owned.forEach(r=>r.dispose());root.clear();}
+    dispose(){if(!alive)return;alive=false;if(fog&&scene.fog===fog){fog.near=fog0[0];fog.far=fog0[1];}scene.remove(root);owned.forEach(r=>r.dispose());root.clear();}
   };
 }
