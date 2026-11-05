@@ -6,7 +6,7 @@ const buildingSource = {title:'旧金山亚洲艺术博物馆 · 大雁塔与中
 export const eraDefinition = {
   id:'changan',title:'盛唐长安',subtitle:'穿过朱红城门，听见远方的回声',
   description:'沿着石板长街，走进灯笼摇曳的坊市，发现建筑、贸易与文化交流。原创唐风学习场景；街区比例、人物和建筑组合经过艺术化设计，并非考古复原。',
-  period:'唐代 · 文化交流主题',accent:'#a7503e',sky:'#a8cbe0',fog:'#ebe1cb',sun:'#ffe1b8',groundLight:'#857559',exposure:1.05,
+  period:'唐代 · 文化交流主题',accent:'#a7503e',sky:'#a8cbe0',fog:'#ebe1cb',sun:'#ffe1b8',groundLight:'#857559',exposure:1.05,fogNear:105,fogFar:500,
   spawn:{x:0,z:43},bounds:108,
   stations:[
     {id:'changan-gate',title:'长街与城门',teacher:'长安向导',role:'城市观察员',x:0,z:-9,color:'#b45541',intro:'先沿中轴线看看远处，再转身看看两侧。城市也有自己的组织方法。这里是唐风概念街区，并非长安城精确模型。',
@@ -39,7 +39,6 @@ export function buildEra(scene,{quality='normal'}={}) {
   const hasDOM=typeof document!=='undefined'&&typeof document.createElement==='function';
   let low=quality==='low',alive=true;
   // 雾：城内清透、远处才起薄雾（只改本场景的雾距，释放时还原）
-  const fog=scene.fog&&scene.fog.isFog?scene.fog:null,fog0=fog&&[fog.near,fog.far];if(fog){fog.near=105;fog.far=500;}
   const timeU={value:0},rand=seeded(618);
   const R=(a=0,b=1)=>a+(b-a)*rand(),pick=a=>a[Math.floor(rand()*a.length)];
   const own=r=>(owned.add(r),r);
@@ -795,6 +794,6 @@ export function buildEra(scene,{quality='normal'}={}) {
       if(!low){placeBirds(time);if(cloudMesh)cloudMesh.rotation.y=time*.0025;
         const p=petalG.attributes.position;for(let i=0;i<PN;i++){let y=p.getY(i)-dt*.35;if(y<.15)y=4.5;p.setY(i,y);p.setX(i,p.getX(i)+Math.sin(time*.7+i)*dt*.12);}p.needsUpdate=true;}},
     setQuality,
-    dispose(){if(!alive)return;alive=false;if(fog&&scene.fog===fog){fog.near=fog0[0];fog.far=fog0[1];}scene.remove(root);owned.forEach(r=>r.dispose());root.clear();}
+    dispose(){if(!alive)return;alive=false;scene.remove(root);owned.forEach(r=>r.dispose());root.clear();}
   };
 }

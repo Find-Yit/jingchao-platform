@@ -7,7 +7,7 @@ const metKingdom = {title:'大都会艺术博物馆 · 古王国的埃及',url:'
 export const eraDefinition = {
   id:'egypt', title:'古埃及金字塔', subtitle:'沙海之上，时间有了形状。',
   description:'沿着石板路走向金字塔，在柱廊、书吏营地和绿洲旁寻找建造与记录的秘密。场景为古王国主题的艺术化学习复原，建筑比例、绿洲位置与人物均为教学设计。',
-  period:'古埃及 · 古王国主题', accent:'#c89c57', sky:'#8fbfdc', fog:'#ebe3d0', sun:'#ffd9a3', exposure:.9, groundLight:'#9c7b55',
+  period:'古埃及 · 古王国主题', accent:'#c89c57', sky:'#8fbfdc', fog:'#ebe3d0', sun:'#ffd9a3', exposure:.9, fogNear:110, fogFar:520, ambient:1.45, groundLight:'#9c7b55',
   spawn:{x:0,z:52}, bounds:110,
   stations:[
     {id:'pyramid',title:'石层里的几何',teacher:'梅里 · 建造向导',role:'虚拟建造向导',x:0,z:4,color:'#b9925b',

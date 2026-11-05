@@ -86,10 +86,10 @@ test('小分块合并：静态网格数量（≈绘制次数）保持在预算�
   world.dispose();
 });
 
-test('场景只临时调整雾距，释放后还原',()=>{
+test('雾距由场景定义提供，航拍时城市不被雾洗白，场景不改动传入的雾',()=>{
+  assert.ok(eraDefinition.fogFar>=400&&eraDefinition.fogNear>=90,'航拍时城市不应被雾洗白');
   const scene=new T.Scene();scene.fog=new T.Fog('#ffffff',90,320);
-  const world=buildEra(scene);assert.ok(scene.fog.far>=400&&scene.fog.near>=90,'航拍时城市不应被雾洗白');
-  world.dispose();assert.deepEqual([scene.fog.near,scene.fog.far],[90,320]);
+  const world=buildEra(scene);assert.deepEqual([scene.fog.near,scene.fog.far],[90,320]);world.dispose();
 });
 
 test('新增的亭子、伞、骆驼等：从空中落下会站在与外形相符的高度上',async()=>{

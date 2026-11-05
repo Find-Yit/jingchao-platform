@@ -8,13 +8,13 @@ import {createExplorer} from './meadow-character.mjs?v=6.0';
 
 
 export function createEraWorld(host,options={}){
- const definition=options.definition;const scene=new T.Scene();scene.background=new T.Color(definition.sky);scene.fog=new T.Fog(definition.fog||definition.sky,90,320);
+ const definition=options.definition;const scene=new T.Scene();scene.background=new T.Color(definition.sky);scene.fog=new T.Fog(definition.fog||definition.sky,definition.fogNear??90,definition.fogFar??320);
  const camera=new T.PerspectiveCamera(53,1,.1,750),renderer=new T.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});
  const touch=matchMedia('(pointer: coarse)').matches;let low=options.quality==='low';
  renderer.setPixelRatio(Math.min(devicePixelRatio,low?1:touch?1.35:1.7));renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=definition.exposure||1.04;
  renderer.shadowMap.enabled=!low;renderer.shadowMap.type=T.PCFSoftShadowMap;
  const canvas=renderer.domElement;canvas.setAttribute('aria-label','时空探索场景。WASD 或方向键行走，连续空格跳跃飞起，长按空格滑翔，Shift 跑步，拖动转动视角，E 与老师交流。');canvas.tabIndex=0;host.appendChild(canvas);
- const ambient=new T.HemisphereLight('#edf5fa',definition.groundLight||'#8f8b70',1.65);scene.add(ambient);
+ const ambient=new T.HemisphereLight('#edf5fa',definition.groundLight||'#8f8b70',definition.ambient??1.65);scene.add(ambient);
  const sun=new T.DirectionalLight(definition.sun||'#fff2d4',2.4);sun.position.set(-48,80,30);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-48,right:48,top:48,bottom:-48,near:1,far:190});sun.shadow.bias=-.0003;sun.shadow.normalBias=.035;scene.add(sun,sun.target);
  const rim=new T.DirectionalLight('#c4e5f0',.75);rim.position.set(35,20,-80);scene.add(rim);
  const environment=options.buildEra(scene,{quality:options.quality}),player=createExplorer({color:'#89b8af',accent:'#e4c986'});scene.add(player.root);
