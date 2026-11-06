@@ -102,7 +102,7 @@ Word/WPS/PowerPoint 界面会因版本不同而变化；不知道版本先给通
 '''
 GENERATION = '''为小学六年级信息科技设计可执行的仿真操作课堂。只返回 JSON {"title":"...","steps":[...]}，无 Markdown。
 每步 {"action":操作,"target":"title"或"body","value":值,"caption":"具体点击动作 + 为什么这样做"}。
-只支持 text(1–350字字符串)、size(18/24/32/40)、bold(布尔)、align(left/center/right)、image(布尔，内置主题插图)、theme(teal/coral/ink)、addSlide(true，仅ppt)。初始一页。addSlide 后操作新页。1–14步，最多5页。不要使用未支持的功能，不提供代码、URL、下载或系统命令。标题和正文需适合小学生，文字短、可阅读、步骤循序渐进。最后形成可检查的具体作品。不要把仿真界面称为真实 Office。'''
+只支持 text(1–350字字符串)、size(18/24/32/40)、bold(布尔)、align(left/center/right)、image(布尔，内置主题插图)、theme(teal/coral/ink，讲解里写中文名：teal 青绿、coral 珊瑚、ink 墨色)、addSlide(true，仅ppt)。初始一页。addSlide 后操作新页。1–14步，最多5页。不要使用未支持的功能，不提供代码、URL、下载或系统命令。标题和正文需适合小学生，文字短、可阅读、步骤循序渐进。最后形成可检查的具体作品。不要把仿真界面称为真实 Office。'''
 
 
 def register(app, h):

@@ -163,6 +163,8 @@ class AssessmentWorkflowTests(unittest.TestCase):
             self.assertNotIn('小禾',sent);self.assertNotIn('student_id',sent)
             self.assertNotIn('测试普通输入',sent)
             self.assertIn('option_counts',sent);self.assertIn('reviewed',sent)
+            # 分数段带区间标签，模型才知道每一档代表多少分
+            self.assertIn('"score_bands": {"0–59%"',sent);self.assertIn('class_name',sent);self.assertNotIn('"distribution"',sent)
         self.assertEqual(self.write('/api/ai/summary/1',{}).status_code,400)
 
     def test_07_import_preview_no_database_mutation(self):

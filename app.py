@@ -1157,7 +1157,9 @@ def ai_summary(cid):
         fail('所选作业不属于当前班级', 400)
     if not a['reviewed']:
         fail('这份作业还没有已确认成绩，请先完成批改再生成分析')
-    aggregate = {key: a[key] for key in ('assignment', 'roster_count', 'submitted', 'reviewed', 'pending', 'missing', 'average', 'average_score', 'distribution')}
+    aggregate = {key: a[key] for key in ('assignment', 'roster_count', 'submitted', 'reviewed', 'pending', 'missing', 'average', 'average_score')}
+    aggregate['score_bands'] = dict(zip(('0–59%', '60–79%', '80–89%', '90–100%'), a['distribution']))
+    aggregate['class_name'] = a['classroom']['name']
     aggregate['subject'] = a['classroom']['subject']
     aggregate['grade'] = a['classroom']['grade']
     aggregate['questions'] = [{k: v for k, v in q.items() if k != 'wrong_answers'} for q in a['questions']]
