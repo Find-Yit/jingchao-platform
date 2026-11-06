@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as T from '../static/vendor/three/three.module.min.js';
 import {buildEra,eraDefinition} from '../static/era-dinosaurs.mjs';
+const TAU=Math.PI*2;
 
 // 与 era-world / meadow-motion 相同的阻挡判定：base>=1.8 或很矮的东西不挡路；盒子支持 ry 旋转
 function blocks(p,o,pad=.4){
@@ -91,4 +92,65 @@ test('high and low builds run, update and dispose every resource; siblings are i
   assert.doesNotThrow(()=>era.dispose());assert.doesNotThrow(()=>era.update(1/60,7,eraDefinition.spawn,false));
  }
  const scene=new T.Scene(),one=buildEra(scene),two=buildEra(scene);one.dispose();assert.equal(scene.children.length,1,'sibling environment survives');two.update(.016,5,eraDefinition.spawn,false);two.dispose();assert.equal(scene.children.length,0);
+});
+
+// ───────── 碰撞与外形一致：从高处落下，落脚高度与看得见的表面比较 ─────────
+import {createMotion,stepMotion} from '../static/meadow-motion.mjs';
+const asWorld=obs=>obs.map(o=>({...o,base:o.base??0,r:o.r??Math.hypot(o.hx||0,o.hz||0)}));// 与 era-world 相同的复制方式
+function drop(x,z,obs,y=60){const m={...createMotion({x,z}),y,grounded:false};for(let i=0;i<700&&!m.grounded;i++)stepMotion(m,{x:0,z:0},1/60,obs,()=>0);return m;}
+const FOOT=[[0,0],[.35,0],[-.35,0],[0,.35],[0,-.35],[.25,.25],[-.25,.25],[.25,-.25],[-.25,-.25]];// 人物脚下约 0.35 米半径
+function surface(x,z,targets){const rc=new T.Raycaster(),down=new T.Vector3(0,-1,0);let top=-Infinity;for(const [dx,dz] of FOOT){rc.set(new T.Vector3(x+dx,90,z+dz),down);const h=rc.intersectObjects(targets,false)[0];if(h)top=Math.max(top,h.point.y);}return top;}
+// 落点相对表面：高出 0.6 米以上算“站在空气上”，低于 1.2 米以上算“埋进去”
+function fitStats(samples){let n=0,ok=0,gross=0;for(const {land,top} of samples){if(land<.3)continue;n++;const d=land-top;if(d<=.6&&d>=-1.2)ok++;if(d>2.2||d<-2.6)gross++;}return {n,ok:n?ok/n:1,gross:n?gross/n:0};}
+let seed=17;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+
+test('tree crowns, rocks, tent roof and strata can be stood on without floating or sinking',()=>{
+ const scene=new T.Scene(),era=buildEra(scene),obs=asWorld(era.obstacles);scene.updateMatrixWorld(true);
+ const m4=new T.Matrix4(),p=new T.Vector3(),q=new T.Quaternion(),s=new T.Vector3(),byKind={};
+ scene.traverse(o=>{if(o.isInstancedMesh&&['araucaria','araucariaYoung','conifer','ginkgo','rock0','rock1','mesa'].includes(o.name))(byKind[o.name]??=[]).push(o);});
+ assert.deepEqual(Object.keys(byKind).sort(),['araucaria','araucariaYoung','conifer','ginkgo','mesa','rock0','rock1']);
+ const limits={araucaria:[.75,.05],araucariaYoung:[.45,.12],conifer:[.6,.05],ginkgo:[.6,.05],rock0:[.9,0],rock1:[.9,0],mesa:[.75,.05]};
+ for(const [kind,meshes] of Object.entries(byKind)){const samples=[];
+  for(const o of meshes)for(let i=0;i<o.count&&i<6;i++){o.getMatrixAt(i,m4);m4.decompose(p,q,s);if(Math.abs(p.x)>104||Math.abs(p.z)>104)continue;const mine=obs.filter(b=>Math.hypot(b.x-p.x,b.z-p.z)<.01);if(!mine.length)continue;
+   const R=Math.max(...mine.map(b=>b.r)),one=new T.Mesh(o.geometry,o.material);one.matrixAutoUpdate=false;one.matrixWorld.copy(m4);
+   // 树冠正中一定能站住，而且就站在树顶附近
+   if(kind!=='rock0'&&kind!=='rock1'){const top=drop(p.x,p.z,mine);assert.ok(top.y>2,`${kind} crown top is standable`);}
+   for(let k=0;k<12;k++){const a=rnd()*TAU,r=Math.sqrt(rnd())*R,l=drop(p.x+Math.cos(a)*r,p.z+Math.sin(a)*r,mine);samples.push({land:l.y,top:surface(l.x,l.z,[one])});}}
+  const st=fitStats(samples),[minOk,maxGross]=limits[kind];
+  assert.ok(st.n>20,`${kind}: enough landings (${st.n})`);
+  assert.ok(st.ok>=minOk,`${kind}: ${(st.ok*100).toFixed(0)}% of landings sit on the visible surface`);
+  assert.ok(st.gross<=maxGross,`${kind}: ${(st.gross*100).toFixed(0)}% gross mismatches`);
+ }
+ const camp=[];scene.traverse(o=>{if(o.isMesh&&!o.isInstancedMesh&&!o.isSkinnedMesh&&o.material.type==='MeshStandardMaterial'&&o!==era.ground)camp.push(o);});
+ // 化石营地遮阳棚：棚顶分层，正中站在屋脊上，檐口站在低处；棚下照常能走
+ const tent={x:-26,z:24.5,ry:-.35},at=(lx,lz)=>[tent.x+lx*Math.cos(tent.ry)+lz*Math.sin(tent.ry),tent.z-lx*Math.sin(tent.ry)+lz*Math.cos(tent.ry)];
+ for(const [lx,lz,lo,hi] of[[0,0,2.7,3.05],[1.2,.8,2.35,2.75],[-1.5,1.45,2.15,2.5]]){const [x,z]=at(lx,lz),l=drop(x,z,obs,20),top=surface(x,z,camp);assert.ok(l.y>lo&&l.y<hi,`tent roof at ${lx},${lz}: ${l.y.toFixed(2)}`);assert.ok(Math.abs(l.y-top)<.45,`tent roof matches canvas (${l.y.toFixed(2)} vs ${top.toFixed(2)})`);}
+ {const [x,z]=at(0,1.2);assert.ok(!obs.some(o=>o.base<2.05&&o.base+o.height>.3&&blocks({x,z},o,.38)),'walking under the awning is not blocked');}
+ // 地层剖面：坡顶和背坡能站，高度与岩面一致
+ const S={x:-55.5,z:15.5,ry:-2.5},samples=[];for(let k=0;k<160;k++){const lx=(rnd()-.5)*20,lz=rnd()*11,x=S.x+lx*Math.cos(S.ry)+lz*Math.sin(S.ry),z=S.z-lx*Math.sin(S.ry)+lz*Math.cos(S.ry),l=drop(x,z,obs,30);samples.push({land:l.y,top:surface(l.x,l.z,camp)});}
+ const st=fitStats(samples);assert.ok(st.n>60&&st.ok>=.7&&st.gross<=.08,`strata fit ${JSON.stringify(st)}`);
+ // 每帧碰撞检测的开销：障碍物总数有上限；地面层不能再有大号的隐形圆（以前霸王龙巡游区是 13 米的圆）
+ assert.ok(era.obstacles.length<3000,`${era.obstacles.length} obstacles`);
+ assert.ok(!era.obstacles.some(o=>!o.water&&o.r>4.6&&o.base<2.05),'no oversized invisible ground colliders');
+ era.dispose();
+});
+
+test('dinosaur colliders follow the skeleton, can be stood on and survive the world copy',()=>{
+ const scene=new T.Scene(),era=buildEra(scene);
+ // era-world 会复制障碍物数组再用；动画更新必须写进它正在用的那一份
+ era.obstacles=asWorld(era.obstacles);const live=era.obstacles,dyn=live.filter(o=>o.dyn);assert.ok(dyn.length>100,'animals have body colliders');
+ era.update(1/60,1,eraDefinition.spawn,false);const a=dyn.map(o=>[o.x,o.z,o.base]);
+ era.update(1/60,40,eraDefinition.spawn,false);const moved=dyn.filter((o,i)=>Math.hypot(o.x-a[i][0],o.z-a[i][1])>5).length,posed=dyn.filter((o,i)=>Math.abs(o.base-a[i][2])>.05).length;
+ assert.ok(moved>15,`the patrolling T. rex carries its colliders (${moved})`);assert.ok(posed>10,`neck and head colliders follow poses (${posed})`);
+ // 站到恐龙背上：落点与身体表面一致
+ scene.updateMatrixWorld(true);const bodies=[];scene.traverse(o=>{if(o.isSkinnedMesh&&o.position.y<5&&Math.abs(o.position.x)<110&&Math.abs(o.position.z)<110){o.skeleton.update();bodies.push(o);}});
+ const samples=[];for(const o of dyn)if(o.base>-10&&o.r>.3){const ang=rnd()*TAU,r=Math.sqrt(rnd())*o.r*.9,l=drop(o.x+Math.cos(ang)*r,o.z+Math.sin(ang)*r,live,40);if(live.some(d=>d.dyn&&Math.abs(d.base+d.height-l.y)<.02))samples.push({land:l.y,top:surface(l.x,l.z,bodies)});}
+ const st=fitStats(samples);assert.ok(st.n>60&&st.ok>=.8&&st.gross<=.05,`dinosaur backs ${JSON.stringify(st)}`);
+ // 长颈恐龙背上很高，能站上去
+ assert.ok(samples.some(s=>s.land>6),'can stand on the sauropod');
+ // 任何时刻，学习站都能步行到达（低头吃草的头颈不挡路）
+ for(const t of[3,17,29,51]){era.update(1/60,t,eraDefinition.spawn,false);for(const s of eraDefinition.stations)assert.ok(walkRoute(eraDefinition.spawn,{x:s.x,z:s.z+3.3},live),`${s.id} reachable at t=${t}`);}
+ // 减少动态效果时碰撞也静止
+ era.update(1/60,60,eraDefinition.spawn,true);const still=dyn.map(o=>o.x+o.z+o.base);era.update(1/60,600,eraDefinition.spawn,true);assert.deepEqual(dyn.map(o=>o.x+o.z+o.base),still);
+ era.dispose();
 });
