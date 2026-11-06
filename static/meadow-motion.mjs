@@ -52,7 +52,11 @@ export function stepMotion(m,input,dt,obstacles=[],height=terrainHeight){
 }
 export function cameraSafeDistance(anchor,end,obstacles,height=terrainHeight){
  const length=Math.hypot(end.x-anchor.x,end.y-anchor.y,end.z-anchor.z),samples=Math.ceil(length/.25);
- const nearby=obstacles.filter(o=>!o.water&&distance(anchor,o)<length+o.r+4);
+ // 只保留离镜头视线足够近、高度上可能相交的障碍物（结果与逐个检查完全相同）
+ const ax=anchor.x,az=anchor.z,ex=end.x-ax,ez=end.z-az,e2=ex*ex+ez*ez,minY=Math.min(anchor.y,end.y),maxY=Math.max(anchor.y,end.y);
+ const nearby=obstacles.filter(o=>{if(o.water||bottom(o)-.1>maxY||top(o)+.25<minY)return false;
+  const px=o.x-ax,pz=o.z-az,t=e2>0?Math.max(0,Math.min(1,(px*ex+pz*ez)/e2)):0,dx=px-ex*t,dz=pz-ez*t,R=(o.hx!==undefined?Math.sqrt(o.hx*o.hx+o.hz*o.hz):o.r)+.26;
+  return dx*dx+dz*dz<R*R;});
  for(let i=3;i<=samples;i++){
   const t=i/samples,x=anchor.x+(end.x-anchor.x)*t,y=anchor.y+(end.y-anchor.y)*t,z=anchor.z+(end.z-anchor.z)*t;
   if(y<height(x,z)+.4||nearby.some(o=>overlaps(x,z,o,.25)&&y>bottom(o)-.1&&y<top(o)+.25))return Math.max(.75,length*(i-1)/samples-.18);
