@@ -35,7 +35,7 @@ function outward(x,z,o){
  let nx,nz;if(qx>0||qz>0){nx=Math.max(qx,0)*Math.sign(lx);nz=Math.max(qz,0)*Math.sign(lz);}else if(qx>qz){nx=Math.sign(lx)||1;nz=0;}else{nx=0;nz=Math.sign(lz)||1;}
  const n=Math.hypot(nx,nz);nx/=n;nz/=n;return [nx*c+nz*s,-nx*s+nz*c];
 }
-const PAD=.38,PUSH_SPEED=12;
+const PAD=.38,PUSH_SPEED=12,CAM_SOFT=3;
 export function queueJump(motion){motion.jumpBuffer=.13;}
 export function stepMotion(m,input,dt,obstacles=[],height=terrainHeight){
  dt=clamp(dt,0,.08);const steps=Math.max(1,Math.ceil(dt/(1/120))),hdt=dt/steps;
@@ -83,11 +83,19 @@ export function cameraSafeDistance(anchor,end,obstacles,height=terrainHeight){
  const length=Math.hypot(end.x-anchor.x,end.y-anchor.y,end.z-anchor.z),samples=Math.ceil(length/.25);
  // 只保留离镜头视线足够近、高度上可能相交的障碍物（结果与逐个检查完全相同）
  const ax=anchor.x,az=anchor.z,ex=end.x-ax,ez=end.z-az,e2=ex*ex+ez*ez,minY=Math.min(anchor.y,end.y),maxY=Math.max(anchor.y,end.y);
+ // 只给镜头用的体积（cam，如看得见的树冠外缘）是“软”的：和人物身体重叠（站在树冠里或低枝下）就不管它；
+ // 视线在离人物 CAM_SOFT 米以内就穿进去的也整片透过去看，免得镜头被挤到脸上或停在叶子里
  const nearby=obstacles.filter(o=>{if(o.water||bottom(o)-.1>maxY||top(o)+.25<minY)return false;
+  if(o.cam&&overlaps(ax,az,o,.25)&&bottom(o)<anchor.y+1&&top(o)>anchor.y-1.4)return false;
   const px=o.x-ax,pz=o.z-az,t=e2>0?Math.max(0,Math.min(1,(px*ex+pz*ez)/e2)):0,dx=px-ex*t,dz=pz-ez*t,R=(o.hx!==undefined?Math.sqrt(o.hx*o.hx+o.hz*o.hz):o.r)+.26;
   return dx*dx+dz*dz<R*R;});
- for(let i=3;i<=samples;i++){
-  const t=i/samples,x=anchor.x+(end.x-anchor.x)*t,y=anchor.y+(end.y-anchor.y)*t,z=anchor.z+(end.z-anchor.z)*t;
-  if(y<height(x,z)+.4||nearby.some(o=>overlaps(x,z,o,.25)&&y>bottom(o)-.1&&y<top(o)+.25))return Math.max(.75,length*(i-1)/samples-.18);
+ let soft=null,skip=null;for(const o of nearby)if(o.cam)(soft||=[]).push(o);
+ for(let i=soft?0:3;i<=samples;i++){
+  const t=i/samples,x=anchor.x+(end.x-anchor.x)*t,y=anchor.y+(end.y-anchor.y)*t,z=anchor.z+(end.z-anchor.z)*t,near=length*t<CAM_SOFT;
+  // 视线在近处就穿进去的那片枝叶整片透过去看（镜头放到它后面），只躲远处的
+  if(soft&&near)for(const o of soft)if(overlaps(x,z,o,.25)&&y>bottom(o)-.1&&y<top(o)+.25)(skip||=new Set()).add(o);
+  if(i<3)continue;
+  if(y<height(x,z)+.4)return Math.max(.75,length*(i-1)/samples-.18);
+  for(const o of nearby){if(o.cam&&(near||skip?.has(o)))continue;if(overlaps(x,z,o,.25)&&y>bottom(o)-.1&&y<top(o)+.25)return Math.max(.75,length*(i-1)/samples-.18);}
  }return length;
 }

@@ -64,3 +64,10 @@ test('push-out never shoves the player into a wall behind them',()=>{
  assert.ok(m.x>-1.2+.4+.3,`人物被推进墙里：x=${m.x.toFixed(2)}`);
  const w=actor();run(w,2,60,{x:-1,run:true},[wall]);assert.ok(w.x>-1.2+.4+.3,'墙仍然挡路');
 });
+test('camera-only foliage: far leaves pull the camera in, near leaves and leaves around the player are looked through',()=>{
+ const a={x:0,y:1.34,z:0},end={x:0,y:2,z:13.5},leaf=(z,r=1.5)=>({x:0,z,r,base:0,height:6,cam:true});
+ const far=cameraSafeDistance(a,end,[leaf(8)],flat);assert.ok(far>5&&far<7,`远处枝叶前应停下：${far}`);
+ assert.equal(cameraSafeDistance(a,end,[leaf(2)],flat),cameraSafeDistance(a,end,[],flat),'近处枝叶整片透过去看');
+ assert.equal(cameraSafeDistance(a,end,[leaf(0,2)],flat),cameraSafeDistance(a,end,[],flat),'人物站在枝叶里时不管它');
+ const wall={x:0,z:2,hx:3,hz:.3,r:3,base:0,height:6};assert.ok(cameraSafeDistance(a,end,[wall],flat)<2,'实体墙照常挡住镜头');
+});

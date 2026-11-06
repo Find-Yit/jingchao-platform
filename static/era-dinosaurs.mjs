@@ -180,7 +180,7 @@ const SPECIES={
 
 export function buildEra(scene,{quality='normal'}={}){
  const root=new T.Group();root.name='era-dinosaurs-environment';scene.add(root);
- const resources=new Set(),obstacles=[],animators=[],qualityMeshes=[],highOnly=[],skeletons=[],clock={value:0};
+ const resources=new Set(),obstacles=[],cameraObstacles=[],animators=[],qualityMeshes=[],highOnly=[],skeletons=[],clock={value:0};
  let alive=true,low=quality==='low';
  let seed=726305;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
  const rr=(a,b)=>a+(b-a)*random();
@@ -591,13 +591,16 @@ export function buildEra(scene,{quality='normal'}={}){
  // 树冠、树蕨、石块、台地的碰撞都由几何体的顶面剖面分层得出（profileDiscs）：飞上去能站在枝叶或石面上，不悬空也不陷进去。
  // 离地 2.1 米以上的树冠层不挡地面行走（era-world 的身体高 2.04 米），只在跳跃、飞行和镜头防穿模时起作用。
  const TREE={araucaria:{trunk:.56,minY:12,n:5,q:.3,inset:.35},araucariaYoung:{trunk:.34,minY:1.6,n:7,q:.45},conifer:{trunk:.42,minY:2.4,n:7,q:.6},ginkgo:{trunk:.4,minY:5,n:5,q:.6,inset:.35}};
- for(const k in TREE){const P=TREE[k];P.discs=profileDiscs(floraGeo[k],{minY:P.minY,q:P.q,ring:.35,sectors:24,maxDiscs:P.n,cover:.85,inset:P.inset||0});P.crown=P.discs[0][0];}
+ for(const k in TREE){const P=TREE[k];P.discs=profileDiscs(floraGeo[k],{minY:P.minY,q:P.q,ring:.35,sectors:24,maxDiscs:P.n,cover:.85,inset:P.inset||0});P.crown=P.discs[0][0];
+  // 只给镜头用的枝叶体积：按看得见的枝叶外缘分层（不影响走路和站立），镜头据此抬高或拉近，不再穿进旁边的树冠
+  P.camDiscs=profileDiscs(floraGeo[k],{minY:P.minY,q:.9,ring:.35,sectors:24,maxDiscs:4,cover:.3,lift:1});}
  const ROCK=[0,1].map(k=>profileDiscs(floraGeo['rock'+k],{minY:-.3,q:.35,ring:.12,sectors:10,maxDiscs:2,cover:.7,lift:.3})),MESA=profileDiscs(floraGeo.mesa,{minY:.05,q:.25,ring:.25,maxDiscs:4,cover:.75,lift:.3});
  const discCollider=(x,z,s,hs,discs,{y=0,minBase=2.1}={})=>{for(const [r,b,t] of discs){const base=Math.max(minBase,y+b*hs),top=y+t*hs;if(top-base>.12)obstacles.push({x,z,r:r*s,base,height:top-base,walkable:true});}};
  const TINTS=['#ffffff','#f3f0da','#e2eddb','#edf2df','#dce6d6','#f6eed3'];
  const addTree=(kind,x,z,s,{ry=random()*TAU,color=TINTS[Math.floor(random()*TINTS.length)],sy=rr(.88,1.14)}={})=>{const P=TREE[kind],hs=s*sy;items[kind].push({x,y:0,z,s,sy:hs,ry,color});
   occupy(x,z,Math.max(1.6,P.crown*s*.55));trees.push({x,z,r:P.crown*s,kind});
-  if(inPlay(x,z)){obstacles.push({x,z,r:P.trunk*s+.12,base:0,height:Math.max(2.3,P.discs[0][1]*hs+.4),walkable:false});discCollider(x,z,s,hs,P.discs);}};
+  if(inPlay(x,z)){obstacles.push({x,z,r:P.trunk*s+.12,base:0,height:Math.max(2.3,P.discs[0][1]*hs+.4),walkable:false});discCollider(x,z,s,hs,P.discs);
+   for(const [r,b,t] of P.camDiscs)if(t>b+.2)cameraObstacles.push({x,z,r:r*s,base:b*hs,height:(t-b)*hs});}};
  // 主景树：腕龙的“餐桌”、各站附近的构图树
  addTree('araucaria',30.5,-34,1.05,{ry:.4,sy:.95});addTree('araucaria',40,-50,.95);addTree('ginkgo',-10,-22,1.1,{ry:1});addTree('araucariaYoung',-37,-14,1.05);addTree('ginkgo',22,18,.95,{ry:2.2});
  addTree('araucaria',-40,-40,1);addTree('conifer',-48,40,1.1);addTree('ginkgo',-24,48,.9);addTree('araucariaYoung',55,25,.95);addTree('conifer',28,-55,1.1);
@@ -766,7 +769,7 @@ export function buildEra(scene,{quality='normal'}={}){
  setQuality(quality);
  const counts={};for(const k in items)counts[k]=items[k].length;
  syncBodies();
- return {ground,get obstacles(){return liveObstacles;},set obstacles(v){liveObstacles=Array.isArray(v)?v:obstacles;},
+ return {ground,cameraObstacles,get obstacles(){return liveObstacles;},set obstacles(v){liveObstacles=Array.isArray(v)?v:obstacles;},
   update(dt,time,player={x:0,z:0},reduced=false){
    if(!alive)return;const t=reduced?0:time;clock.value=t;
    for(const a of animators)a(t,dt,player||{x:0,z:0},reduced);syncBodies();

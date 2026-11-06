@@ -154,3 +154,11 @@ test('dinosaur colliders follow the skeleton, can be stood on and survive the wo
  era.update(1/60,60,eraDefinition.spawn,true);const still=dyn.map(o=>o.x+o.z+o.base);era.update(1/60,600,eraDefinition.spawn,true);assert.deepEqual(dyn.map(o=>o.x+o.z+o.base),still);
  era.dispose();
 });
+
+test('树冠另有一组只给镜头用的枝叶体积，不混进走路用的障碍物',()=>{
+  const world=buildEra(new T.Scene());const cam=world.cameraObstacles;
+  assert.ok(Array.isArray(cam)&&cam.length>300,`镜头枝叶体积 ${cam?.length}`);
+  for(const o of cam){assert.ok([o.x,o.z,o.r,o.base,o.height].every(Number.isFinite)&&o.r>0&&o.height>0);assert.ok(Math.abs(o.x)<110&&Math.abs(o.z)<110);}
+  const set=new Set(cam);assert.ok(!world.obstacles.some(o=>set.has(o)),'镜头体积不能挡路');
+  world.dispose();
+});

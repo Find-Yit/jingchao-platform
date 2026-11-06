@@ -20,6 +20,8 @@ export function createEraWorld(host,options={}){
  const environment=options.buildEra(scene,{quality:options.quality}),player=createExplorer({color:'#89b8af',accent:'#e4c986'});scene.add(player.root);
  environment.obstacles=environment.obstacles.map(o=>({...o,base:o.base??0,r:o.r??Math.hypot(o.hx||0,o.hz||0)}));
  const bound=definition.bounds||110;for(const o of [{x:bound+3,z:0,hx:3,hz:bound+6},{x:-bound-3,z:0,hx:3,hz:bound+6},{x:0,z:bound+3,hx:bound+6,hz:3},{x:0,z:-bound-3,hx:bound+6,hz:3}])environment.obstacles.push({...o,r:Math.hypot(o.hx,o.hz),base:-1,height:180});
+ // 镜头防穿模用的障碍物：实体障碍物 + 场景提供的“只给镜头用”的体积（如看得见的树冠外缘）
+ const cameraObstacles=environment.cameraObstacles?.length?environment.obstacles.concat(environment.cameraObstacles.map(o=>({...o,base:o.base??0,r:o.r??Math.hypot(o.hx||0,o.hz||0),cam:true}))):environment.obstacles;
  const restored=options.position&&Number.isFinite(options.position.x)&&Number.isFinite(options.position.z)&&Math.abs(options.position.x)<200&&Math.abs(options.position.z)<200?options.position:definition.spawn;
  let motion={...createMotion(restored),y:Number.isFinite(restored.y)&&restored.y>0?Math.min(restored.y,60):0},time=0,last=0,raf=0,alive=true,near=null,lastNear=null,autopath=[],destination=null,joystick={x:0,y:0},running=false,jumpHeld=false,drag=null,manualOrbitUntil=0,lastNotify=0,lastRender=0;
  let yaw=.11,targetYaw=.11,pitch=.015,targetPitch=.015,zoom=13.5,targetZoom=13.5,camDistance=14,wasPaused=false;
@@ -72,11 +74,13 @@ export function createEraWorld(host,options={}){
   // 屋顶或石阶挡住视线时先抬高镜头越过去，实在不行才拉近
   const orbit=(target,p)=>target.set(anchor.x+Math.sin(yaw)*Math.cos(p)*zoom,Math.max(anchor.y+Math.sin(p)*zoom+.6,terrainHeight(anchor.x,anchor.z)+.7),anchor.z+Math.cos(yaw)*Math.cos(p)*zoom);
   let wantLift=0;const clear=zoom*.72;
-  if(cameraSafeDistance(anchor,orbit(probe,pitch+lift),environment.obstacles,terrainHeight)<clear){wantLift=lift;for(const extra of [.25,.5,.75,1.0]){const p=Math.min(1.25,pitch+extra);if(cameraSafeDistance(anchor,orbit(probe,p),environment.obstacles,terrainHeight)>=clear){wantLift=p-pitch;break;}wantLift=p-pitch;}}
-  else if(lift>0&&cameraSafeDistance(anchor,orbit(probe,pitch+Math.max(0,lift-.25)),environment.obstacles,terrainHeight)>=clear)wantLift=Math.max(0,lift-.25);else wantLift=lift;
+  // 依次试不抬和抬高 0.25–1.0：取第一个视线通畅的；都不通畅时取看得最远的（不再停在最高角度，免得头顶有树冠时镜头贴到脸上）
+  const now=cameraSafeDistance(anchor,orbit(probe,pitch+lift),cameraObstacles,terrainHeight);
+  if(now<clear){let best=lift,bestD=now;for(const extra of [0,.25,.5,.75,1.0]){const p=Math.min(1.25,pitch+extra);if(Math.abs(p-pitch-lift)<1e-6)continue;const d=cameraSafeDistance(anchor,orbit(probe,p),cameraObstacles,terrainHeight);if(d>=clear){best=p-pitch;break;}if(d>bestD+.5){best=p-pitch;bestD=d;}}wantLift=best;}
+  else if(lift>0&&cameraSafeDistance(anchor,orbit(probe,pitch+Math.max(0,lift-.25)),cameraObstacles,terrainHeight)>=clear)wantLift=Math.max(0,lift-.25);else wantLift=lift;
   lift=initial?wantLift:damp(lift,wantLift,wantLift>lift?7:1.6,dt);
   orbit(desired,pitch+lift);
-  const safe=cameraSafeDistance(anchor,desired,environment.obstacles,terrainHeight);camDistance=initial?safe:damp(camDistance,safe,safe<camDistance?28:4.5,dt);
+  const safe=cameraSafeDistance(anchor,desired,cameraObstacles,terrainHeight);camDistance=initial?safe:damp(camDistance,safe,safe<camDistance?28:4.5,dt);
   delta.copy(desired).sub(anchor).normalize().multiplyScalar(camDistance);camera.position.copy(anchor).add(delta);camera.lookAt(anchor);
   const nextFov=damp(camera.fov,motion.speed>6?56:53,2.5,dt);if(Math.abs(nextFov-camera.fov)>.005){camera.fov=nextFov;camera.updateProjectionMatrix();}
   player.root.visible=camDistance>1.6;
