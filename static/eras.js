@@ -1,7 +1,7 @@
 'use strict';
 const eraState={module:null,world:null,near:null,station:null,tab:'lesson',progress:[],quality:'normal',user:null,positions:{},chat:[],busy:false,fullscreen:false};
 const eraCatalog=[{id:'changan',title:'盛唐长安',en:'CHANG’AN',period:'一城烟火 · 万里相逢',description:'沿着朱雀大街，走进坊市、城门与书院。',color:'#c47753'},{id:'egypt',title:'古埃及金字塔',en:'ANCIENT EGYPT',period:'沙海之上 · 文明之光',description:'穿过金字塔与柱廊，发现测量、记录和尼罗河。',color:'#bc9753'},{id:'dinosaurs',title:'恐龙时代',en:'PREHISTORIC EARTH',period:'穿过雨林 · 遇见远古',description:'仰望长颈巨兽，观察化石与不同时期的生命。',color:'#598f77'}];
-function eraCards(){return eraCatalog.map((e,i)=>`<a class="era-card era-${e.id}" href="#portals?era=${e.id}" style="--era-color:${e.color}"><img src="/static/intro/assets/era-${e.id}.jpg?v=10.0" alt="${e.title}三维探索场景" loading="lazy"><span class="era-card-number">0${i+1} / ${e.en}</span><div><small>${e.period}</small><h2>${e.title}</h2><p>${e.description}</p><strong>打开传送门 ↗</strong></div></a>`).join('');}
+function eraCards(){return eraCatalog.map((e,i)=>`<a class="era-card era-${e.id}" href="#portals?era=${e.id}" style="--era-color:${e.color}"><img src="/static/intro/assets/era-${e.id}.jpg?v=10.1" alt="${e.title}三维探索场景" loading="lazy"><span class="era-card-number">0${i+1} / ${e.en}</span><div><small>${e.period}</small><h2>${e.title}</h2><p>${e.description}</p><strong>打开传送门 ↗</strong></div></a>`).join('');}
 async function erasPage(){
  if(eraState.user!==state.user.id){eraState.user=state.user.id;eraState.positions={};eraState.progress=[];eraState.chat=[];}
  const requested=new URLSearchParams(location.hash.split('?')[1]||'').get('era');eraState.module=null;eraState.near=null;eraState.station=null;

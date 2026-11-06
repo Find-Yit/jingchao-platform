@@ -29,7 +29,7 @@
           <h1>学习，可以是一次<br><em>奇妙的发现。</em></h1>
           <p>老师在这里备课、布置作业、看懂每一道题；同学们在三维世界里探索，在操作课堂里动手做。</p>
         </div>
-        <div class="t-worlds">${worlds.map(([id, name, note], i) => `<figure class="t-world t-world-${i}"><img src="/static/brand/login-${id}.jpg" alt="${name}三维学习场景" loading="${i ? 'lazy' : 'eager'}"><figcaption><strong>${name}</strong><small>${note}</small></figcaption></figure>`).join('')}</div>
+        <div class="t-worlds">${worlds.map(([id, name, note], i) => `<figure class="t-world t-world-${i}"><img src="/static/brand/login-${id}.jpg?v=10.1" alt="${name}三维学习场景" loading="${i ? 'lazy' : 'eager'}"><figcaption><strong>${name}</strong><small>${note}</small></figcaption></figure>`).join('')}</div>
         <ul class="t-features">${features.map(([ic, t, d]) => `<li><span>${icon(ic)}</span><div><strong>${t}</strong><small>${d}</small></div></li>`).join('')}</ul>
       </section>
       <section class="t-login-panel">
