@@ -44,3 +44,23 @@ test('a falling player lands on a high rooftop',()=>{
 test('rotated wide rocks block the visible long edge',()=>{
  const m={...actor(),x:1.8,z:-4},obs=[{x:0,z:0,r:3,hx:2.6,hz:1,ry:.1,base:0,height:1.5,walkable:true}];run(m,2,60,{z:1},obs);assert.ok(m.z<-1);
 });
+test('a moving obstacle that sweeps over a standing player pushes them out instead of trapping them',()=>{
+ const m=actor(),leg={x:-3,z:0,r:.8,base:0,height:3};
+ // 障碍物以 3 m/s 从左边扫过人物所在的位置
+ let overlapped=0;for(let i=0;i<120;i++){leg.x=-3+3*i/60;stepMotion(m,{},1/60,[leg],flat);if(Math.hypot(m.x-leg.x,m.z-leg.z)<leg.r+.3)overlapped++;}
+ assert.ok(overlapped<=2,`人物被压在障碍物里 ${overlapped} 帧`);
+ const box={x:0,z:0,hx:1.2,hz:.6,ry:.7,r:Math.hypot(1.2,.6),base:0,height:2.5},n=actor();n.x=.2;n.z=.1;
+ run(n,.25,60,{},[box]);assert.ok(!(Math.abs((n.x)*Math.cos(.7)-(n.z)*Math.sin(.7))<1.2+.3&&Math.abs((n.x)*Math.sin(.7)+(n.z)*Math.cos(.7))<.6+.3),'应从旋转的盒子里被推出');
+});
+test('a player caught inside a moving obstacle can walk away from it at once',()=>{
+ const m=actor(),o={x:.5,z:0,r:1,base:0,height:3},far=[{x:60,z:60,r:1,base:0,height:3}];
+ const before=m.x;stepMotion(m,{x:-1},1/60,[o,...far],flat);for(let i=0;i<6;i++)stepMotion(m,{x:-1},1/60,[o],flat);
+ assert.ok(m.x<before-.05,'朝远离的方向走不应被挡住');
+});
+test('push-out never shoves the player into a wall behind them',()=>{
+ const m=actor(),wall={x:-1.2,z:0,hx:.4,hz:5,r:Math.hypot(.4,5),base:0,height:4},mover={x:1.5,z:0,r:.9,base:0,height:3};
+ // 墙和移动物体之间挤得站不下人时，也不能把人推进墙里
+ for(let i=0;i<90;i++){mover.x=Math.max(.6,1.5-i/60);stepMotion(m,{},1/60,[wall,mover],flat);}
+ assert.ok(m.x>-1.2+.4+.3,`人物被推进墙里：x=${m.x.toFixed(2)}`);
+ const w=actor();run(w,2,60,{x:-1,run:true},[wall]);assert.ok(w.x>-1.2+.4+.3,'墙仍然挡路');
+});
