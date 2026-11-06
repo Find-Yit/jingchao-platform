@@ -17,7 +17,7 @@ async function mountMeadow(seq){
  const host=$('#meadow-canvas');if(!host)return;let disposed=false,joystickCleanup=()=>{};const previous=disposeVisuals;
  disposeVisuals=()=>{disposed=true;if(meadowState.world){meadowState.positions[state.user?.id||meadowState.user]=meadowState.world.getPosition();meadowState.world.dispose();meadowState.world=null;}joystickCleanup();if(meadowState.fullscreenOwned){meadowState.fullscreenOwned=false;screen.orientation?.unlock?.();if(document.fullscreenElement)document.exitFullscreen?.().catch(()=>{});}previous();};
  try{
-  const {createMeadow}=await import('/static/meadow-world.mjs?v=9.2');if(disposed||seq!==routeSequence||!host.isConnected)return;
+  const {createMeadow}=await import('/static/meadow-world.mjs?v=10.2');if(disposed||seq!==routeSequence||!host.isConnected)return;
   meadowState.world=createMeadow(host,{stations:meadowState.data.stations,position:meadowState.positions[state.user.id],quality:meadowState.quality,isPaused:()=>matchMedia('(orientation:portrait) and (max-width:600px), (orientation:portrait) and (pointer:coarse)').matches&&!meadowState.fallback,onInputReset:()=>{const stick=$('.joystick-stick');if(stick)stick.style.transform='';},onReady:()=>$('#meadow-loading')?.remove(),onNotice:toast,
    onNear(id){meadowState.near=id;const camp=campById(id),el=$('#meadow-near'),b=$('#meadow-interact');if(el)el.innerHTML=camp?`<span class="camp-portrait" style="--camp-color:${camp.color}">${esc(camp.teacher[0])}</span><div><small>你来到了 ${esc(camp.title)}</small><strong>${esc(camp.teacher)}在这里等你</strong></div><button data-action="meadow-interact">聊一聊 <kbd>E</kbd></button>`:'';if(b)b.hidden=!id;},
    onVisit:recordMeadowVisit,

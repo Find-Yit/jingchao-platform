@@ -2,8 +2,8 @@ import {createWorldPet} from './pet-companion.mjs?v=9.2';
 import {landingSpot} from './meadow-travel.mjs?v=6.0';
 import * as T from './vendor/three/three.module.min.js';
 import {LAKE,terrainHeight,findPath,distance,clamp} from './meadow-math.mjs?v=6.0';
-import {createMotion,stepMotion,queueJump,cameraSafeDistance,angleDelta,damp,RUN_SPEED} from './meadow-motion.mjs?v=6.0';
-import {createExplorer} from './meadow-character.mjs?v=6.0';
+import {createMotion,stepMotion,queueJump,cameraSafeDistance,angleDelta,damp,RUN_SPEED} from './meadow-motion.mjs?v=10.2';
+import {createExplorer} from './meadow-character.mjs?v=10.2';
 import {createEnvironment} from './meadow-environment.mjs?v=6.0';
 
 export function createMeadow(host,options={}){

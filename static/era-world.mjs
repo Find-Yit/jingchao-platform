@@ -3,8 +3,8 @@ import {createWorldPet} from './pet-companion.mjs?v=9.2';
 import * as T from './vendor/three/three.module.min.js';
 import {distance,clamp} from './meadow-math.mjs?v=6.0';
 const terrainHeight=()=>0;
-import {createMotion,stepMotion,queueJump,cameraSafeDistance,overlaps,angleDelta,damp,RUN_SPEED} from './meadow-motion.mjs?v=10.1';
-import {createExplorer} from './meadow-character.mjs?v=6.0';
+import {createMotion,stepMotion,queueJump,cameraSafeDistance,overlaps,angleDelta,damp,RUN_SPEED} from './meadow-motion.mjs?v=10.2';
+import {createExplorer} from './meadow-character.mjs?v=10.2';
 
 
 export function createEraWorld(host,options={}){
